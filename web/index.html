@@ -1,79 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koi — Computation OS</title>
+    <title>Koi — 计算操作系统</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* Dark theme (default) */
         :root {
-            --bg: #1a1a2e; --bg2: #16213e; --bg3: #0f3460;
-            --text: #e0e0e0; --accent: #e94560; --accent2: #533483;
+            --bg: #1e1e1e; --bg2: #252526; --bg3: #2d2d2d; --bg4: #3c3c3c;
+            --text: #d4d4d4; --text2: #808080;
+            --accent: #007acc; --accent2: #0098ff; --danger: #f44747;
+            --success: #6a9955; --warning: #cca700;
             --mono: 'Consolas', 'Monaco', 'Courier New', monospace;
+            --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
-        html, body { height: 100%; font-family: sans-serif; background: var(--bg); color: var(--text); }
+
+        /* Light theme */
+        :root.light {
+            --bg: #ffffff; --bg2: #f3f3f3; --bg3: #e8e8e8; --bg4: #d4d4d4;
+            --text: #333333; --text2: #666666;
+            --accent: #0066b8; --accent2: #0078d4; --danger: #d32f2f;
+            --success: #2e7d32; --warning: #f57f17;
+        }
+
+        html, body { height: 100%; font-family: var(--sans); background: var(--bg); color: var(--text); }
         #app { display: flex; flex-direction: column; height: 100vh; }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: var(--bg2); border-bottom: 1px solid var(--bg3); }
-        header h1 { font-size: 1.2rem; }
-        .header-btns { display: flex; gap: 8px; }
-        header button { padding: 6px 16px; border: none; border-radius: 4px; background: var(--accent); color: white; cursor: pointer; font-size: 0.9rem; }
-        header button:hover { opacity: 0.8; }
-        header button.secondary { background: var(--accent2); }
+
+        /* Header */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 6px 16px; background: var(--bg2); border-bottom: 1px solid var(--bg4); }
+        header h1 { font-size: 1.1rem; }
+        .header-btns { display: flex; gap: 6px; }
+        header button, .btn { padding: 5px 14px; border: none; border-radius: 3px; background: var(--accent); color: white; cursor: pointer; font-size: 0.85rem; }
+        header button:hover, .btn:hover { opacity: 0.85; }
+        header button.secondary { background: var(--bg4); color: var(--text); }
+
+        /* Main */
         main { display: flex; flex: 1; overflow: hidden; }
 
         /* Sidebar */
-        #sidebar { width: 200px; background: var(--bg2); border-right: 1px solid var(--bg3); display: flex; flex-direction: column; }
-        #sidebar h3 { padding: 8px 12px; font-size: 0.8rem; text-transform: uppercase; color: #888; border-bottom: 1px solid var(--bg3); }
+        #sidebar { width: 220px; background: var(--bg2); border-right: 1px solid var(--bg4); display: flex; flex-direction: column; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--bg4); }
+        .sidebar-header h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--text2); letter-spacing: 0.5px; }
         #file-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
-        .file-item { padding: 4px 12px; cursor: pointer; border-radius: 3px; font-size: 0.85rem; user-select: none; }
+        .file-item { display: flex; align-items: center; padding: 3px 12px; cursor: pointer; font-size: 0.85rem; user-select: none; }
         .file-item:hover { background: var(--bg3); }
+        .file-item .icon { margin-right: 6px; font-size: 0.9rem; }
+        .file-item .name { flex: 1; }
+        .file-item.dir { color: var(--accent2); }
 
         /* Context Menu */
-        .context-menu { display: none; position: fixed; background: var(--bg2); border: 1px solid var(--bg3); border-radius: 4px; padding: 4px 0; z-index: 1000; min-width: 160px; box-shadow: 2px 2px 8px rgba(0,0,0,0.5); }
-        .context-menu.active { display: block; }
-        .context-menu-item { padding: 6px 16px; cursor: pointer; font-size: 0.85rem; }
-        .context-menu-item:hover { background: var(--bg3); }
-        .context-menu-sep { height: 1px; background: var(--bg3); margin: 4px 0; }
+        .ctx-menu { display: none; position: fixed; background: var(--bg2); border: 1px solid var(--bg4); border-radius: 4px; padding: 4px 0; z-index: 1000; min-width: 150px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .ctx-menu.active { display: block; }
+        .ctx-item { padding: 5px 16px; cursor: pointer; font-size: 0.85rem; }
+        .ctx-item:hover { background: var(--accent); color: white; }
+        .ctx-sep { height: 1px; background: var(--bg4); margin: 3px 0; }
 
-        /* Editor + Terminal area */
+        /* Work area */
         #work-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
         /* Editor */
-        #editor { flex: 1; background: var(--bg); display: flex; flex-direction: column; }
-        .editor-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--bg3); font-size: 0.8rem; color: #888; }
+        #editor { flex: 1; display: flex; flex-direction: column; }
+        .editor-bar { display: flex; justify-content: space-between; align-items: center; padding: 4px 12px; background: var(--bg3); border-bottom: 1px solid var(--bg4); font-size: 0.75rem; color: var(--text2); }
         #code { flex: 1; width: 100%; padding: 12px; border: none; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 14px; line-height: 1.6; resize: none; outline: none; tab-size: 4; }
 
-        /* Terminal (bottom panel) */
-        #terminal { height: 200px; background: #0d1117; border-top: 1px solid var(--bg3); display: flex; flex-direction: column; }
-        .terminal-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 12px; background: var(--bg2); border-bottom: 1px solid var(--bg3); }
-        .terminal-header h4 { font-size: 0.75rem; text-transform: uppercase; color: #888; }
-        .terminal-header button { padding: 2px 8px; border: none; border-radius: 3px; background: var(--bg3); color: var(--text); cursor: pointer; font-size: 0.75rem; }
-        #terminal-output { flex: 1; overflow-y: auto; padding: 8px 12px; font-family: var(--mono); font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
-        .terminal-input { display: flex; align-items: center; padding: 4px 12px; border-top: 1px solid #21262d; }
-        .terminal-input .prompt { color: var(--accent); font-family: var(--mono); margin-right: 8px; }
-        .terminal-input input { flex: 1; border: none; background: transparent; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; }
+        /* Terminal */
+        #terminal { height: 220px; background: var(--bg); border-top: 1px solid var(--bg4); display: flex; flex-direction: column; }
+        .term-bar { display: flex; justify-content: space-between; align-items: center; padding: 3px 12px; background: var(--bg3); border-bottom: 1px solid var(--bg4); }
+        .term-bar h4 { font-size: 0.7rem; text-transform: uppercase; color: var(--text2); }
+        .term-bar button { padding: 1px 8px; border: none; border-radius: 2px; background: var(--bg4); color: var(--text); cursor: pointer; font-size: 0.7rem; }
+        #term-output { flex: 1; overflow-y: auto; padding: 8px 12px; font-family: var(--mono); font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+        .term-input { display: flex; align-items: center; padding: 4px 12px; border-top: 1px solid var(--bg4); }
+        .term-input .prompt { color: var(--accent); font-family: var(--mono); margin-right: 8px; font-weight: bold; }
+        .term-input input { flex: 1; border: none; background: transparent; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; }
         .stdout { color: var(--text); }
-        .stderr { color: var(--accent); }
-        .info { color: #58a6ff; }
+        .stderr { color: var(--danger); }
+        .info { color: var(--accent2); }
 
         /* Resize handle */
-        #resize-handle { height: 4px; background: var(--bg3); cursor: ns-resize; }
+        #resize-handle { height: 3px; background: var(--bg4); cursor: ns-resize; }
         #resize-handle:hover { background: var(--accent); }
 
-        footer { display: flex; justify-content: space-between; padding: 4px 16px; background: var(--accent2); font-size: 0.75rem; }
+        /* Footer */
+        footer { display: flex; justify-content: space-between; padding: 3px 16px; background: var(--accent); color: white; font-size: 0.7rem; }
 
         /* Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
         .modal.active { display: flex; }
-        .modal-content { background: var(--bg2); border-radius: 8px; padding: 20px; width: 400px; border: 1px solid var(--bg3); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-        .modal-header h2 { font-size: 1rem; }
-        .modal-close { background: none; border: none; color: var(--text); font-size: 1.3rem; cursor: pointer; }
-        .modal-body input { width: 100%; padding: 8px; background: var(--bg); border: 1px solid var(--bg3); border-radius: 4px; color: var(--text); font-size: 0.9rem; margin-bottom: 12px; }
-        .modal-footer { display: flex; justify-content: flex-end; gap: 8px; }
-        .modal-footer button { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+        .modal-box { background: var(--bg2); border: 1px solid var(--bg4); border-radius: 6px; padding: 20px; min-width: 350px; max-width: 500px; }
+        .modal-title { font-size: 1rem; margin-bottom: 16px; }
+        .form-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .form-row label { font-size: 0.85rem; color: var(--text2); }
+        .form-row input, .form-row select { padding: 5px 8px; background: var(--bg); border: 1px solid var(--bg4); border-radius: 3px; color: var(--text); font-size: 0.85rem; }
+        .form-row input[type="number"] { width: 90px; }
+        .form-row input[type="text"] { width: 180px; }
+        .form-section { font-size: 0.75rem; text-transform: uppercase; color: var(--accent); margin: 12px 0 8px; letter-spacing: 0.5px; }
+        .modal-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+        .modal-btns button { padding: 6px 18px; border: none; border-radius: 3px; cursor: pointer; font-size: 0.85rem; }
         .btn-ok { background: var(--accent); color: white; }
-        .btn-cancel { background: var(--bg3); color: var(--text); }
+        .btn-cancel { background: var(--bg4); color: var(--text); }
     </style>
 </head>
 <body>
@@ -81,113 +107,226 @@
         <header>
             <h1>🐟 Koi</h1>
             <div class="header-btns">
-                <button onclick="runCode()">▶ Run (Ctrl+Enter)</button>
-                <button onclick="clearTerminal()" class="secondary">Clear</button>
-                <button onclick="openSettings()" class="secondary">⚙</button>
+                <button onclick="runCode()" title="Ctrl+Enter">▶ 运行</button>
+                <button onclick="clearTerminal()" class="secondary">清空</button>
+                <button onclick="openSettings()" class="secondary">⚙ 设置</button>
             </div>
         </header>
         <main>
             <aside id="sidebar">
-                <h3>Files</h3>
+                <div class="sidebar-header">
+                    <h3>文件</h3>
+                </div>
                 <div id="file-tree"></div>
             </aside>
             <div id="work-area">
                 <div id="editor">
-                    <div class="editor-header">
+                    <div class="editor-bar">
                         <span>untitled.lua</span>
-                        <span id="cursor-pos">Ln 1, Col 1</span>
+                        <span id="cursor-pos">行 1, 列 1</span>
                     </div>
                     <textarea id="code" spellcheck="false">-- Koi 0.1.0-mvp
--- Lua computation environment
+-- Lua 计算环境
 
--- Define your own constants
+-- 定义常量
 c = 299792458
 G = 6.67430e-11
 
--- Create a matrix
+-- 创建矩阵
 math.mat_new('/data/A', 3, 3, {1,2,3, 4,5,6, 7,8,9})
 
--- Print it
+-- 打印矩阵
 io.print(math.mat_print('/data/A'))
 
--- Shape
+-- 获取形状
 io.print('Shape: ' .. table.concat(math.mat_shape('/data/A'), 'x'))</textarea>
                 </div>
                 <div id="resize-handle"></div>
                 <div id="terminal">
-                    <div class="terminal-header">
-                        <h4>Terminal</h4>
-                        <button onclick="clearTerminal()">Clear</button>
+                    <div class="term-bar">
+                        <h4>终端</h4>
+                        <button onclick="clearTerminal()">清空</button>
                     </div>
-                    <div id="terminal-output"></div>
-                    <div class="terminal-input">
+                    <div id="term-output"></div>
+                    <div class="term-input">
                         <span class="prompt">></span>
-                        <input type="text" id="shell-input" placeholder="Enter Lua expression..." autocomplete="off">
+                        <input type="text" id="shell-input" placeholder="输入 Lua 表达式... (↑↓ 历史, Tab 补全, help 帮助)" autocomplete="off">
                     </div>
                 </div>
             </div>
         </main>
         <footer>
-            <span id="status">Ready</span>
+            <span id="status">就绪</span>
             <span>Koi v0.1.0-mvp</span>
         </footer>
     </div>
 
     <!-- Context Menu -->
-    <div id="context-menu" class="context-menu">
-        <div class="context-menu-item" onclick="ctxNewFile()">📄 New File</div>
-        <div class="context-menu-item" onclick="ctxNewDir()">📁 New Directory</div>
-        <div class="context-menu-sep"></div>
-        <div class="context-menu-item" onclick="ctxRename()">✏️ Rename</div>
-        <div class="context-menu-item" onclick="ctxDelete()">🗑️ Delete</div>
+    <div id="ctx-menu" class="ctx-menu">
+        <div class="ctx-item" onclick="ctxNewFile()">📄 新建文件</div>
+        <div class="ctx-item" onclick="ctxNewDir()">📁 新建目录</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" onclick="ctxDelete()">🗑️ 删除</div>
     </div>
 
-    <!-- New File/Dir Modal -->
+    <!-- Input Modal -->
     <div id="input-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="input-modal-title">New File</h2>
-                <button class="modal-close" onclick="closeInputModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <input type="text" id="input-modal-value" placeholder="name..." autocomplete="off">
-            </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="closeInputModal()">Cancel</button>
-                <button class="btn-ok" onclick="confirmInputModal()">OK</button>
+        <div class="modal-box">
+            <div class="modal-title" id="input-title">新建文件</div>
+            <input type="text" id="input-value" style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--bg4);border-radius:3px;color:var(--text);font-size:0.9rem" autocomplete="off">
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="closeInputModal()">取消</button>
+                <button class="btn-ok" onclick="confirmInputModal()">确定</button>
             </div>
         </div>
     </div>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
-        <div class="modal-content" style="width:500px; max-height:80vh; overflow-y:auto;">
-            <div class="modal-header">
-                <h2>⚙ Settings</h2>
-                <button class="modal-close" onclick="closeSettings()">&times;</button>
+        <div class="modal-box" style="min-width:420px">
+            <div class="modal-title">⚙ 设置</div>
+
+            <div class="form-section">安全</div>
+            <div class="form-row">
+                <label>最大超时 (秒)</label>
+                <input type="number" id="s-timeout" value="60">
             </div>
-            <div style="margin-bottom:12px">
-                <h4 style="color:var(--accent);font-size:0.8rem;margin-bottom:8px">SECURITY</h4>
-                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><label style="font-size:0.85rem;color:#aaa">Max Timeout (s)</label><input type="number" id="s-sec-timeout" value="60" style="width:80px;padding:4px;background:var(--bg);border:1px solid var(--bg3);border-radius:3px;color:var(--text)"></div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><label style="font-size:0.85rem;color:#aaa">Max Matrix Size</label><input type="number" id="s-sec-matrix" value="10000" style="width:80px;padding:4px;background:var(--bg);border:1px solid var(--bg3);border-radius:3px;color:var(--text)"></div>
+            <div class="form-row">
+                <label>最大矩阵维度</label>
+                <input type="number" id="s-matrix" value="10000">
             </div>
-            <div style="margin-bottom:12px">
-                <h4 style="color:var(--accent);font-size:0.8rem;margin-bottom:8px">UI</h4>
-                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><label style="font-size:0.85rem;color:#aaa">Theme</label><select id="s-ui-theme" style="padding:4px;background:var(--bg);border:1px solid var(--bg3);border-radius:3px;color:var(--text)"><option value="dark">Dark</option><option value="light">Light</option></select></div>
+            <div class="form-row">
+                <label>最大张量维度</label>
+                <input type="number" id="s-tensor" value="8">
             </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="closeSettings()">Cancel</button>
-                <button class="btn-ok" onclick="saveSettings()">Save</button>
+
+            <div class="form-section">引擎</div>
+            <div class="form-row">
+                <label>版本</label>
+                <select id="s-edition">
+                    <option value="full">完整版</option>
+                    <option value="lite">精简版</option>
+                </select>
+            </div>
+
+            <div class="form-section">界面</div>
+            <div class="form-row">
+                <label>主题</label>
+                <select id="s-theme">
+                    <option value="dark">深色</option>
+                    <option value="light">浅色</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>字体大小</label>
+                <input type="number" id="s-fontsize" value="14">
+            </div>
+
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="closeSettings()">取消</button>
+                <button class="btn-ok" onclick="saveSettings()">保存</button>
             </div>
         </div>
     </div>
 
     <script>
         const codeEl = document.getElementById('code');
-        const outputEl = document.getElementById('terminal-output');
+        const outputEl = document.getElementById('term-output');
         const shellInput = document.getElementById('shell-input');
         const statusEl = document.getElementById('status');
         let ctxTarget = null;
+
+        // === Shell History ===
+        const history = [];
+        let historyIdx = -1;
+        const completions = [
+            'fs.mkdir(', 'fs.write(', 'fs.read(', 'fs.ls(', 'fs.rm(', 'fs.exists(',
+            'math.mat_new(', 'math.mat_mul(', 'math.mat_transpose(', 'math.mat_determinant(',
+            'math.mat_inverse(', 'math.mat_print(', 'math.mat_shape(',
+            'math.tensor_new(', 'math.tensor_print(', 'math.tensor_shape(',
+            'math.dot(', 'math.norm(', 'math.cross(',
+            'io.print(', 'os.time()', 'os.clock()', 'os.version()', 'os.edition()',
+        ];
+
+        shellInput.addEventListener('keydown', async function(e) {
+            // History: up/down
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIdx < history.length - 1) {
+                    historyIdx++;
+                    this.value = history[history.length - 1 - historyIdx];
+                }
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIdx > 0) {
+                    historyIdx--;
+                    this.value = history[history.length - 1 - historyIdx];
+                } else {
+                    historyIdx = -1;
+                    this.value = '';
+                }
+                return;
+            }
+            // Tab completion
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const val = this.value;
+                const match = completions.find(c => c.startsWith(val) && c !== val);
+                if (match) this.value = match;
+                return;
+            }
+            // Enter
+            if (e.key === 'Enter') {
+                const code = this.value.trim();
+                this.value = '';
+                historyIdx = -1;
+                if (!code) return;
+                if (code !== history[history.length - 1]) history.push(code);
+                if (code === 'help') { showHelp(); return; }
+                if (code === 'clear') { clearTerminal(); return; }
+                appendOutput('> ' + code, 'info');
+                try {
+                    const r = await apiExecute(code);
+                    if (r.error) appendOutput(r.error, 'stderr');
+                    else if (r.output) appendOutput(r.output, 'stdout');
+                } catch (e) { appendOutput('网络错误: ' + e.message, 'stderr'); }
+            }
+        });
+
+        function showHelp() {
+            appendOutput(`命令:
+  help                  显示帮助
+  clear                 清空终端
+
+文件系统:
+  fs.mkdir(path)        创建目录
+  fs.write(path, val)   写入值
+  fs.read(path)         读取值
+  fs.ls(path)           列出内容
+  fs.rm(path)           删除
+  fs.exists(path)       检查存在
+
+矩阵:
+  math.mat_new(path, r, c, data)   创建
+  math.mat_mul(a, b, result)       乘法
+  math.mat_transpose(path, result) 转置
+  math.mat_determinant(path)       行列式
+  math.mat_inverse(path, result)   逆矩阵
+  math.mat_print(path)             打印
+  math.mat_shape(path)             形状
+
+向量:
+  math.dot(a, b)        点积
+  math.norm(a)          范数
+  math.cross(a, b)      叉积 (3D)
+
+示例:
+  math.mat_new("/data/A", 2, 2, {1,2,3,4})
+  math.mat_print("/data/A")
+  fs.write("/home/user/x", 42)`, 'info');
+        }
 
         // === Editor ===
         codeEl.addEventListener('keydown', function(e) {
@@ -199,75 +338,32 @@ io.print('Shape: ' .. table.concat(math.mat_shape('/data/A'), 'x'))</textarea>
             }
             if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); runCode(); }
         });
-
-        codeEl.addEventListener('click', updateCursorPos);
-        codeEl.addEventListener('keyup', updateCursorPos);
-        function updateCursorPos() {
+        codeEl.addEventListener('click', updateCursor);
+        codeEl.addEventListener('keyup', updateCursor);
+        function updateCursor() {
             const v = codeEl.value.substring(0, codeEl.selectionStart);
             const ln = (v.match(/\n/g) || []).length + 1;
             const col = v.length - v.lastIndexOf('\n');
-            document.getElementById('cursor-pos').textContent = `Ln ${ln}, Col ${col}`;
+            document.getElementById('cursor-pos').textContent = `行 ${ln}, 列 ${col}`;
         }
 
-        // === Run Code ===
+        // === API ===
+        async function apiExecute(code) {
+            const r = await fetch('/api/lua/execute', { method: 'POST', body: code });
+            return r.json();
+        }
+
         async function runCode() {
             const code = codeEl.value.trim();
             if (!code) return;
-            statusEl.textContent = 'Running...';
-            appendOutput('> run', 'info');
+            statusEl.textContent = '运行中...';
+            appendOutput('> 运行脚本', 'info');
             try {
-                const r = await fetch('/api/lua/execute', { method: 'POST', body: code });
-                const d = await r.json();
-                if (d.error) appendOutput(d.error, 'stderr');
-                else if (d.output) appendOutput(d.output, 'stdout');
-            } catch (e) { appendOutput('Network error: ' + e.message, 'stderr'); }
-            statusEl.textContent = 'Ready';
-        }
-
-        // === Shell ===
-        shellInput.addEventListener('keydown', async function(e) {
-            if (e.key === 'Enter') {
-                const code = this.value.trim();
-                this.value = '';
-                if (!code) return;
-                if (code === 'help') { showHelp(); return; }
-                if (code === 'clear') { clearTerminal(); return; }
-                appendOutput('> ' + code, 'info');
-                try {
-                    const r = await fetch('/api/lua/execute', { method: 'POST', body: code });
-                    const d = await r.json();
-                    if (d.error) appendOutput(d.error, 'stderr');
-                    else if (d.output) appendOutput(d.output, 'stdout');
-                } catch (e) { appendOutput('Network error: ' + e.message, 'stderr'); }
-            }
-        });
-
-        function showHelp() {
-            appendOutput(`Commands:
-  help                Show this help
-  clear               Clear terminal
-
-Filesystem:
-  fs.mkdir(path)              Create directory
-  fs.write(path, value)       Write value
-  fs.read(path)               Read value
-  fs.ls(path)                 List contents
-  fs.rm(path)                 Delete
-  fs.exists(path)             Check existence
-
-Matrix:
-  math.mat_new(path, r, c, data)    Create
-  math.mat_mul(a, b, result)        Multiply
-  math.mat_transpose(path, result)  Transpose
-  math.mat_determinant(path)        Determinant
-  math.mat_inverse(path, result)    Inverse
-  math.mat_print(path)              Print
-  math.mat_shape(path)              Shape
-
-Vector:
-  math.dot(a, b)      Dot product
-  math.norm(a)        L2 norm
-  math.cross(a, b)    Cross product (3D)`, 'info');
+                const r = await apiExecute(code);
+                if (r.error) appendOutput(r.error, 'stderr');
+                else if (r.output) appendOutput(r.output, 'stdout');
+            } catch (e) { appendOutput('网络错误: ' + e.message, 'stderr'); }
+            statusEl.textContent = '就绪';
         }
 
         function appendOutput(text, cls) {
@@ -288,68 +384,78 @@ Vector:
                 const d = await r.json();
                 const tree = document.getElementById('file-tree');
                 tree.innerHTML = '';
+                if (currentPath !== '/') {
+                    const up = document.createElement('div');
+                    up.className = 'file-item dir';
+                    up.innerHTML = '<span class="icon">⬆</span><span class="name">..</span>';
+                    up.onclick = () => {
+                        const parent = currentPath.replace(/\/[^\/]+\/?$/, '') || '/';
+                        loadFiles(parent);
+                    };
+                    tree.appendChild(up);
+                }
                 if (d.children) {
                     d.children.forEach(item => {
                         const el = document.createElement('div');
-                        el.className = 'file-item';
-                        el.textContent = (item.type === 'dir' ? '📁 ' : '📄 ') + item.name;
+                        el.className = 'file-item' + (item.type === 'dir' ? ' dir' : '');
+                        const icon = item.type === 'dir' ? '📁' : '📄';
+                        el.innerHTML = `<span class="icon">${icon}</span><span class="name">${esc(item.name)}</span>`;
                         el.dataset.key = item.key;
-                        el.dataset.type = item.type;
                         el.onclick = () => { if (item.type === 'dir') loadFiles(item.key); };
-                        el.oncontextmenu = (e) => showContextMenu(e, item);
+                        el.oncontextmenu = (e) => showCtxMenu(e, item);
                         tree.appendChild(el);
                     });
                 }
-            } catch (e) {}
+            } catch (e) { console.error('loadFiles error:', e); }
         }
 
+        function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
         // === Context Menu ===
-        function showContextMenu(e, item) {
+        function showCtxMenu(e, item) {
             e.preventDefault();
             ctxTarget = item;
-            const menu = document.getElementById('context-menu');
+            const menu = document.getElementById('ctx-menu');
             menu.style.left = e.clientX + 'px';
             menu.style.top = e.clientY + 'px';
             menu.classList.add('active');
         }
-        document.addEventListener('click', () => {
-            document.getElementById('context-menu').classList.remove('active');
-        });
+        document.addEventListener('click', () => document.getElementById('ctx-menu').classList.remove('active'));
 
-        function ctxNewFile() { openInputModal('New File', '', async (name) => {
-            await fetch('/api/lua/execute', { method: 'POST', body: `fs.write("${ctxTarget.key}/${name}", "")` });
-            loadFiles(currentPath);
-        });}
-        function ctxNewDir() { openInputModal('New Directory', '', async (name) => {
-            await fetch('/api/lua/execute', { method: 'POST', body: `fs.mkdir("${ctxTarget.key}/${name}")` });
-            loadFiles(currentPath);
-        });}
-        function ctxRename() { openInputModal('Rename', ctxTarget.name, async (name) => {
-            await fetch('/api/lua/execute', { method: 'POST', body: `fs.mv("${ctxTarget.key}", "${ctxTarget.key.replace(/\/[^\/]+$/, '')}/${name}")` });
-            loadFiles(currentPath);
-        });}
+        function ctxNewFile() {
+            openInputModal('新建文件', '', async (name) => {
+                await apiExecute(`fs.write("${ctxTarget.key}/${name}", "")`);
+                loadFiles(currentPath);
+            });
+        }
+        function ctxNewDir() {
+            openInputModal('新建目录', '', async (name) => {
+                await apiExecute(`fs.mkdir("${ctxTarget.key}/${name}")`);
+                loadFiles(currentPath);
+            });
+        }
         function ctxDelete() {
-            if (confirm('Delete ' + ctxTarget.name + '?')) {
-                fetch('/api/lua/execute', { method: 'POST', body: `fs.rm("${ctxTarget.key}")` }).then(() => loadFiles(currentPath));
+            if (confirm('确定删除 ' + ctxTarget.name + '？')) {
+                apiExecute(`fs.rm("${ctxTarget.key}")`).then(() => loadFiles(currentPath));
             }
         }
 
         // === Input Modal ===
-        let inputCallback = null;
-        function openInputModal(title, value, cb) {
-            document.getElementById('input-modal-title').textContent = title;
-            document.getElementById('input-modal-value').value = value;
+        let inputCb = null;
+        function openInputModal(title, val, cb) {
+            document.getElementById('input-title').textContent = title;
+            document.getElementById('input-value').value = val;
             document.getElementById('input-modal').classList.add('active');
-            document.getElementById('input-modal-value').focus();
-            inputCallback = cb;
+            document.getElementById('input-value').focus();
+            inputCb = cb;
         }
         function closeInputModal() { document.getElementById('input-modal').classList.remove('active'); }
         function confirmInputModal() {
-            const v = document.getElementById('input-modal-value').value.trim();
-            if (v && inputCallback) inputCallback(v);
+            const v = document.getElementById('input-value').value.trim();
+            if (v && inputCb) inputCb(v);
             closeInputModal();
         }
-        document.getElementById('input-modal-value').addEventListener('keydown', function(e) {
+        document.getElementById('input-value').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') confirmInputModal();
             if (e.key === 'Escape') closeInputModal();
         });
@@ -361,35 +467,68 @@ Vector:
         handle.addEventListener('mousedown', (e) => { resizing = true; e.preventDefault(); });
         document.addEventListener('mousemove', (e) => {
             if (!resizing) return;
-            const h = window.innerHeight - e.clientY - 30;
+            const h = window.innerHeight - e.clientY - 28;
             terminal.style.height = Math.max(80, Math.min(500, h)) + 'px';
         });
         document.addEventListener('mouseup', () => { resizing = false; });
+
+        // === Theme ===
+        function applyTheme(theme) {
+            if (theme === 'light') {
+                document.documentElement.classList.add('light');
+            } else {
+                document.documentElement.classList.remove('light');
+            }
+        }
 
         // === Settings ===
         async function openSettings() {
             try {
                 const r = await fetch('/api/settings');
                 const c = await r.json();
-                document.getElementById('s-sec-timeout').value = c.security?.max_timeout || 60;
-                document.getElementById('s-sec-matrix').value = c.security?.max_matrix_size || 10000;
-                document.getElementById('s-ui-theme').value = c.ui?.theme || 'dark';
+                document.getElementById('s-timeout').value = c.security?.max_timeout || 60;
+                document.getElementById('s-matrix').value = c.security?.max_matrix_size || 10000;
+                document.getElementById('s-tensor').value = c.security?.max_tensor_ndim || 8;
+                document.getElementById('s-edition').value = c.engine?.edition || 'full';
+                document.getElementById('s-theme').value = c.ui?.theme || 'dark';
+                document.getElementById('s-fontsize').value = c.ui?.font_size || 14;
             } catch (e) {}
             document.getElementById('settings-modal').classList.add('active');
         }
         function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
         async function saveSettings() {
+            const theme = document.getElementById('s-theme').value;
             const cfg = {
                 security: {
-                    max_timeout: parseInt(document.getElementById('s-sec-timeout').value),
-                    max_matrix_size: parseInt(document.getElementById('s-sec-matrix').value),
+                    max_timeout: parseInt(document.getElementById('s-timeout').value),
+                    max_matrix_size: parseInt(document.getElementById('s-matrix').value),
+                    max_tensor_ndim: parseInt(document.getElementById('s-tensor').value),
                 },
-                ui: { theme: document.getElementById('s-ui-theme').value },
+                engine: { edition: document.getElementById('s-edition').value },
+                ui: {
+                    theme: theme,
+                    font_size: parseInt(document.getElementById('s-fontsize').value),
+                },
             };
-            await fetch('/api/settings/update', { method: 'POST', body: JSON.stringify(cfg) });
+            try {
+                await fetch('/api/settings/update', { method: 'POST', body: JSON.stringify(cfg) });
+                applyTheme(theme);
+                const fontSize = cfg.ui.font_size + 'px';
+                codeEl.style.fontSize = fontSize;
+                document.getElementById('shell-input').style.fontSize = fontSize;
+            } catch (e) {}
             closeSettings();
-            statusEl.textContent = 'Settings saved';
+            statusEl.textContent = '设置已保存';
         }
+
+        // Apply saved theme on load
+        (async () => {
+            try {
+                const r = await fetch('/api/settings');
+                const c = await r.json();
+                applyTheme(c.ui?.theme || 'dark');
+            } catch (e) {}
+        })();
 
         loadFiles('/');
     </script>
