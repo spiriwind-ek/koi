@@ -230,6 +230,8 @@ io.print('Shape: ' .. table.concat(math.mat_shape('/data/A'), 'x'))</textarea>
                 const code = this.value.trim();
                 this.value = '';
                 if (!code) return;
+                if (code === 'help') { showHelp(); return; }
+                if (code === 'clear') { clearTerminal(); return; }
                 appendOutput('> ' + code, 'info');
                 try {
                     const r = await fetch('/api/lua/execute', { method: 'POST', body: code });
@@ -239,6 +241,34 @@ io.print('Shape: ' .. table.concat(math.mat_shape('/data/A'), 'x'))</textarea>
                 } catch (e) { appendOutput('Network error: ' + e.message, 'stderr'); }
             }
         });
+
+        function showHelp() {
+            appendOutput(`Commands:
+  help                Show this help
+  clear               Clear terminal
+
+Filesystem:
+  fs.mkdir(path)              Create directory
+  fs.write(path, value)       Write value
+  fs.read(path)               Read value
+  fs.ls(path)                 List contents
+  fs.rm(path)                 Delete
+  fs.exists(path)             Check existence
+
+Matrix:
+  math.mat_new(path, r, c, data)    Create
+  math.mat_mul(a, b, result)        Multiply
+  math.mat_transpose(path, result)  Transpose
+  math.mat_determinant(path)        Determinant
+  math.mat_inverse(path, result)    Inverse
+  math.mat_print(path)              Print
+  math.mat_shape(path)              Shape
+
+Vector:
+  math.dot(a, b)      Dot product
+  math.norm(a)        L2 norm
+  math.cross(a, b)    Cross product (3D)`, 'info');
+        }
 
         function appendOutput(text, cls) {
             const span = document.createElement('span');
