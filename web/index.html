@@ -191,30 +191,30 @@
   clear                 Clear terminal
 
 Filesystem:
-  fs.mkdir(path)        Create directory
-  fs.write(path, val)   Write value
-  fs.read(path)         Read value
-  fs.ls(path)           List contents
-  fs.rm(path)           Delete
-  fs.exists(path)       Check existence
+  fs.mkdir("/path")           Create directory
+  fs.write("/path", val)      Write value
+  fs.read("/path")            Read value
+  fs.ls("/path")              List contents
+  fs.rm("/path")              Delete
+  fs.exists("/path")          Check existence
 
 Matrix:
-  math.mat_new(path, r, c, data)   Create
-  math.mat_mul(a, b, result)       Multiply
-  math.mat_transpose(path, result) Transpose
-  math.mat_determinant(path)       Determinant
-  math.mat_inverse(path, result)   Inverse
-  math.mat_print(path)             Print
-  math.mat_shape(path)             Shape
+  math.mat_new("/data/A", 2, 2, {1,2,3,4})
+  math.mat_mul("/data/A", "/data/B", "/data/C")
+  math.mat_transpose("/data/A", "/data/AT")
+  math.mat_determinant("/data/A")
+  math.mat_inverse("/data/A", "/data/AI")
+  math.mat_print("/data/A")
+  math.mat_shape("/data/A")
 
 Vector:
-  math.dot(a, b)        Dot product
-  math.norm(a)          Norm
-  math.cross(a, b)      Cross product (3D)
+  math.dot({1,2,3}, {4,5,6})     Dot product
+  math.norm({1,2,3})             Norm
+  math.cross({1,0,0}, {0,1,0})   Cross product (3D)
 
-Example:
-  math.mat_new("/data/A", 2, 2, {1,2,3,4})
-  math.mat_print("/data/A")`,
+Note: Paths must be quoted!
+  ✗ fs.mkdir(test)
+  ✓ fs.mkdir("/test")`,
             },
             zh: {
                 title: 'Koi — 计算操作系统',
@@ -240,31 +240,30 @@ Example:
   clear                 清空终端
 
 文件系统:
-  fs.mkdir(path)        创建目录
-  fs.write(path, val)   写入值
-  fs.read(path)         读取值
-  fs.ls(path)           列出内容
-  fs.rm(path)           删除
-  fs.exists(path)       检查存在
+  fs.mkdir("/path")           创建目录
+  fs.write("/path", val)      写入值
+  fs.read("/path")            读取值
+  fs.ls("/path")              列出内容
+  fs.rm("/path")              删除
+  fs.exists("/path")          检查存在
 
 矩阵:
-  math.mat_new(path, r, c, data)   创建
-  math.mat_mul(a, b, result)       乘法
-  math.mat_transpose(path, result) 转置
-  math.mat_determinant(path)       行列式
-  math.mat_inverse(path, result)   逆矩阵
-  math.mat_print(path)             打印
-  math.mat_shape(path)             形状
+  math.mat_new("/data/A", 2, 2, {1,2,3,4})
+  math.mat_mul("/data/A", "/data/B", "/data/C")
+  math.mat_transpose("/data/A", "/data/AT")
+  math.mat_determinant("/data/A")
+  math.mat_inverse("/data/A", "/data/AI")
+  math.mat_print("/data/A")
+  math.mat_shape("/data/A")
 
 向量:
-  math.dot(a, b)        点积
-  math.norm(a)          范数
-  math.cross(a, b)      叉积 (3D)
+  math.dot({1,2,3}, {4,5,6})     点积
+  math.norm({1,2,3})             范数
+  math.cross({1,0,0}, {0,1,0})   叉积
 
-示例:
-  math.mat_new("/data/A", 2, 2, {1,2,3,4})
-  math.mat_print("/data/A")`,
-            }
+注意: 路径必须用引号包裹！
+  ✗ fs.mkdir(test)
+  ✓ fs.mkdir("/test")`,
         };
 
         let lang = localStorage.getItem('koi-lang') || 'en';
