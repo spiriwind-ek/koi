@@ -15,6 +15,14 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "shell" {
+		runShellMode()
+		return
+	}
+	runServerMode()
+}
+
+func runServerMode() {
 	configPath := flag.String("config", "config/koi.toml", "config file path")
 	listen := flag.String("listen", "", "override listen address")
 	dbPath := flag.String("db", "", "override database path")
@@ -77,4 +85,42 @@ func main() {
 	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("Server error: %v", err)
 	}
+}
+
+func runShellMode() {
+	configPath := "config/koi.toml"
+	dbPath := ""
+
+	args := os.Args[2:]
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "-config":
+			if i+1 < len(args) {
+				configPath = args[i+1]
+				i++
+			}
+		case "-db":
+			if i+1 < len(args) {
+				dbPath = args[i+1]
+				i++
+			}
+		}
+	}
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	if dbPath != "" {
+		cfg.Database.Path = dbPath
+	}
+
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		log.Fatalf("Failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	runShell(db, cfg)
 }

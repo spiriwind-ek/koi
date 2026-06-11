@@ -25,7 +25,8 @@
 ```bash
 go mod tidy
 CGO_ENABLED=1 go build -o koi .
-./koi
+./koi                              # 启动 Web 服务器
+./koi shell                        # 启动交互式 Lua Shell
 ```
 
 浏览器打开 `http://localhost:8080`。
