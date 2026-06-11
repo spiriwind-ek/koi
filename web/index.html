@@ -20,36 +20,59 @@
         header button:hover { opacity: 0.8; }
         header button.secondary { background: var(--accent2); }
         main { display: flex; flex: 1; overflow: hidden; }
-        #sidebar { width: 200px; background: var(--bg2); border-right: 1px solid var(--bg3); overflow-y: auto; padding: 8px; }
-        #sidebar h3 { font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px; color: #888; }
-        .file-item { padding: 4px 8px; cursor: pointer; border-radius: 3px; font-size: 0.85rem; }
+
+        /* Sidebar */
+        #sidebar { width: 200px; background: var(--bg2); border-right: 1px solid var(--bg3); display: flex; flex-direction: column; }
+        #sidebar h3 { padding: 8px 12px; font-size: 0.8rem; text-transform: uppercase; color: #888; border-bottom: 1px solid var(--bg3); }
+        #file-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
+        .file-item { padding: 4px 12px; cursor: pointer; border-radius: 3px; font-size: 0.85rem; user-select: none; }
         .file-item:hover { background: var(--bg3); }
-        #editor-panel { flex: 1; display: flex; flex-direction: column; }
-        #editor { flex: 1; background: var(--bg); }
-        #code { width: 100%; height: 100%; padding: 16px; border: none; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 14px; line-height: 1.6; resize: none; outline: none; tab-size: 4; }
-        #console { width: 400px; background: var(--bg2); border-left: 1px solid var(--bg3); display: flex; flex-direction: column; }
-        #console h3 { padding: 8px 12px; font-size: 0.8rem; text-transform: uppercase; color: #888; border-bottom: 1px solid var(--bg3); }
-        #output { flex: 1; overflow-y: auto; padding: 12px; font-family: var(--mono); font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
-        .error { color: var(--accent); }
-        .success { color: #4ecca3; }
+
+        /* Context Menu */
+        .context-menu { display: none; position: fixed; background: var(--bg2); border: 1px solid var(--bg3); border-radius: 4px; padding: 4px 0; z-index: 1000; min-width: 160px; box-shadow: 2px 2px 8px rgba(0,0,0,0.5); }
+        .context-menu.active { display: block; }
+        .context-menu-item { padding: 6px 16px; cursor: pointer; font-size: 0.85rem; }
+        .context-menu-item:hover { background: var(--bg3); }
+        .context-menu-sep { height: 1px; background: var(--bg3); margin: 4px 0; }
+
+        /* Editor + Terminal area */
+        #work-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+        /* Editor */
+        #editor { flex: 1; background: var(--bg); display: flex; flex-direction: column; }
+        .editor-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--bg3); font-size: 0.8rem; color: #888; }
+        #code { flex: 1; width: 100%; padding: 12px; border: none; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 14px; line-height: 1.6; resize: none; outline: none; tab-size: 4; }
+
+        /* Terminal (bottom panel) */
+        #terminal { height: 200px; background: #0d1117; border-top: 1px solid var(--bg3); display: flex; flex-direction: column; }
+        .terminal-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 12px; background: var(--bg2); border-bottom: 1px solid var(--bg3); }
+        .terminal-header h4 { font-size: 0.75rem; text-transform: uppercase; color: #888; }
+        .terminal-header button { padding: 2px 8px; border: none; border-radius: 3px; background: var(--bg3); color: var(--text); cursor: pointer; font-size: 0.75rem; }
+        #terminal-output { flex: 1; overflow-y: auto; padding: 8px 12px; font-family: var(--mono); font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+        .terminal-input { display: flex; align-items: center; padding: 4px 12px; border-top: 1px solid #21262d; }
+        .terminal-input .prompt { color: var(--accent); font-family: var(--mono); margin-right: 8px; }
+        .terminal-input input { flex: 1; border: none; background: transparent; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; }
+        .stdout { color: var(--text); }
+        .stderr { color: var(--accent); }
+        .info { color: #58a6ff; }
+
+        /* Resize handle */
+        #resize-handle { height: 4px; background: var(--bg3); cursor: ns-resize; }
+        #resize-handle:hover { background: var(--accent); }
+
         footer { display: flex; justify-content: space-between; padding: 4px 16px; background: var(--accent2); font-size: 0.75rem; }
 
-        /* Settings Modal */
+        /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; }
         .modal.active { display: flex; }
-        .modal-content { background: var(--bg2); border-radius: 8px; padding: 24px; width: 500px; max-height: 80vh; overflow-y: auto; border: 1px solid var(--bg3); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .modal-header h2 { font-size: 1.1rem; }
-        .modal-close { background: none; border: none; color: var(--text); font-size: 1.5rem; cursor: pointer; }
-        .setting-group { margin-bottom: 20px; }
-        .setting-group h4 { font-size: 0.85rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; }
-        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .setting-row label { font-size: 0.85rem; color: #aaa; }
-        .setting-row input, .setting-row select { padding: 4px 8px; background: var(--bg); border: 1px solid var(--bg3); border-radius: 4px; color: var(--text); font-size: 0.85rem; }
-        .setting-row input[type="number"] { width: 100px; }
-        .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-        .modal-footer button { padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
-        .btn-save { background: var(--accent); color: white; }
+        .modal-content { background: var(--bg2); border-radius: 8px; padding: 20px; width: 400px; border: 1px solid var(--bg3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .modal-header h2 { font-size: 1rem; }
+        .modal-close { background: none; border: none; color: var(--text); font-size: 1.3rem; cursor: pointer; }
+        .modal-body input { width: 100%; padding: 8px; background: var(--bg); border: 1px solid var(--bg3); border-radius: 4px; color: var(--text); font-size: 0.9rem; margin-bottom: 12px; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 8px; }
+        .modal-footer button { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+        .btn-ok { background: var(--accent); color: white; }
         .btn-cancel { background: var(--bg3); color: var(--text); }
     </style>
 </head>
@@ -59,8 +82,8 @@
             <h1>🐟 Koi</h1>
             <div class="header-btns">
                 <button onclick="runCode()">▶ Run (Ctrl+Enter)</button>
-                <button onclick="clearOutput()" class="secondary">Clear</button>
-                <button onclick="openSettings()" class="secondary">⚙ Settings</button>
+                <button onclick="clearTerminal()" class="secondary">Clear</button>
+                <button onclick="openSettings()" class="secondary">⚙</button>
             </div>
         </header>
         <main>
@@ -68,8 +91,12 @@
                 <h3>Files</h3>
                 <div id="file-tree"></div>
             </aside>
-            <section id="editor-panel">
+            <div id="work-area">
                 <div id="editor">
+                    <div class="editor-header">
+                        <span>untitled.lua</span>
+                        <span id="cursor-pos">Ln 1, Col 1</span>
+                    </div>
                     <textarea id="code" spellcheck="false">-- Koi 0.1.0-mvp
 -- Lua computation environment
 
@@ -86,11 +113,19 @@ io.print(math.mat_print('/data/A'))
 -- Shape
 io.print('Shape: ' .. table.concat(math.mat_shape('/data/A'), 'x'))</textarea>
                 </div>
-            </section>
-            <aside id="console">
-                <h3>Output</h3>
-                <div id="output"></div>
-            </aside>
+                <div id="resize-handle"></div>
+                <div id="terminal">
+                    <div class="terminal-header">
+                        <h4>Terminal</h4>
+                        <button onclick="clearTerminal()">Clear</button>
+                    </div>
+                    <div id="terminal-output"></div>
+                    <div class="terminal-input">
+                        <span class="prompt">></span>
+                        <input type="text" id="shell-input" placeholder="Enter Lua expression..." autocomplete="off">
+                    </div>
+                </div>
+            </div>
         </main>
         <footer>
             <span id="status">Ready</span>
@@ -98,217 +133,232 @@ io.print('Shape: ' .. table.concat(math.mat_shape('/data/A'), 'x'))</textarea>
         </footer>
     </div>
 
+    <!-- Context Menu -->
+    <div id="context-menu" class="context-menu">
+        <div class="context-menu-item" onclick="ctxNewFile()">📄 New File</div>
+        <div class="context-menu-item" onclick="ctxNewDir()">📁 New Directory</div>
+        <div class="context-menu-sep"></div>
+        <div class="context-menu-item" onclick="ctxRename()">✏️ Rename</div>
+        <div class="context-menu-item" onclick="ctxDelete()">🗑️ Delete</div>
+    </div>
+
+    <!-- New File/Dir Modal -->
+    <div id="input-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="input-modal-title">New File</h2>
+                <button class="modal-close" onclick="closeInputModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="input-modal-value" placeholder="name..." autocomplete="off">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeInputModal()">Cancel</button>
+                <button class="btn-ok" onclick="confirmInputModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="width:500px; max-height:80vh; overflow-y:auto;">
             <div class="modal-header">
                 <h2>⚙ Settings</h2>
                 <button class="modal-close" onclick="closeSettings()">&times;</button>
             </div>
-
-            <div class="setting-group">
-                <h4>Server</h4>
-                <div class="setting-row">
-                    <label>Listen Address</label>
-                    <input type="text" id="s-server-listen" value=":8080">
-                </div>
-                <div class="setting-row">
-                    <label>Timeout</label>
-                    <input type="text" id="s-server-timeout" value="30s">
-                </div>
+            <div style="margin-bottom:12px">
+                <h4 style="color:var(--accent);font-size:0.8rem;margin-bottom:8px">SECURITY</h4>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><label style="font-size:0.85rem;color:#aaa">Max Timeout (s)</label><input type="number" id="s-sec-timeout" value="60" style="width:80px;padding:4px;background:var(--bg);border:1px solid var(--bg3);border-radius:3px;color:var(--text)"></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><label style="font-size:0.85rem;color:#aaa">Max Matrix Size</label><input type="number" id="s-sec-matrix" value="10000" style="width:80px;padding:4px;background:var(--bg);border:1px solid var(--bg3);border-radius:3px;color:var(--text)"></div>
             </div>
-
-            <div class="setting-group">
-                <h4>Database</h4>
-                <div class="setting-row">
-                    <label>Path</label>
-                    <input type="text" id="s-db-path" value="./data/koi.db">
-                </div>
+            <div style="margin-bottom:12px">
+                <h4 style="color:var(--accent);font-size:0.8rem;margin-bottom:8px">UI</h4>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><label style="font-size:0.85rem;color:#aaa">Theme</label><select id="s-ui-theme" style="padding:4px;background:var(--bg);border:1px solid var(--bg3);border-radius:3px;color:var(--text)"><option value="dark">Dark</option><option value="light">Light</option></select></div>
             </div>
-
-            <div class="setting-group">
-                <h4>Security</h4>
-                <div class="setting-row">
-                    <label>Max Timeout (s)</label>
-                    <input type="number" id="s-sec-timeout" value="60">
-                </div>
-                <div class="setting-row">
-                    <label>Max Memory (bytes)</label>
-                    <input type="number" id="s-sec-memory" value="1073741824">
-                </div>
-                <div class="setting-row">
-                    <label>Max Matrix Size</label>
-                    <input type="number" id="s-sec-matrix" value="10000">
-                </div>
-                <div class="setting-row">
-                    <label>Max Tensor Dimensions</label>
-                    <input type="number" id="s-sec-tensor" value="8">
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <h4>Engine</h4>
-                <div class="setting-row">
-                    <label>Edition</label>
-                    <select id="s-engine-edition">
-                        <option value="full">Full</option>
-                        <option value="lite">Lite</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <h4>UI</h4>
-                <div class="setting-row">
-                    <label>Theme</label>
-                    <select id="s-ui-theme">
-                        <option value="dark">Dark</option>
-                        <option value="light">Light</option>
-                    </select>
-                </div>
-                <div class="setting-row">
-                    <label>Font Size</label>
-                    <input type="number" id="s-ui-fontsize" value="14">
-                </div>
-                <div class="setting-row">
-                    <label>Tab Size</label>
-                    <input type="number" id="s-ui-tabsize" value="4">
-                </div>
-            </div>
-
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeSettings()">Cancel</button>
-                <button class="btn-save" onclick="saveSettings()">Save</button>
+                <button class="btn-ok" onclick="saveSettings()">Save</button>
             </div>
         </div>
     </div>
 
     <script>
         const codeEl = document.getElementById('code');
-        const outputEl = document.getElementById('output');
+        const outputEl = document.getElementById('terminal-output');
+        const shellInput = document.getElementById('shell-input');
         const statusEl = document.getElementById('status');
+        let ctxTarget = null;
 
+        // === Editor ===
         codeEl.addEventListener('keydown', function(e) {
             if (e.key === 'Tab') {
                 e.preventDefault();
-                const start = this.selectionStart;
-                this.value = this.value.substring(0, start) + '    ' + this.value.substring(this.selectionEnd);
-                this.selectionStart = this.selectionEnd = start + 4;
+                const s = this.selectionStart;
+                this.value = this.value.substring(0, s) + '    ' + this.value.substring(this.selectionEnd);
+                this.selectionStart = this.selectionEnd = s + 4;
             }
-            if (e.key === 'Enter' && e.ctrlKey) {
-                e.preventDefault();
-                runCode();
-            }
+            if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); runCode(); }
         });
 
+        codeEl.addEventListener('click', updateCursorPos);
+        codeEl.addEventListener('keyup', updateCursorPos);
+        function updateCursorPos() {
+            const v = codeEl.value.substring(0, codeEl.selectionStart);
+            const ln = (v.match(/\n/g) || []).length + 1;
+            const col = v.length - v.lastIndexOf('\n');
+            document.getElementById('cursor-pos').textContent = `Ln ${ln}, Col ${col}`;
+        }
+
+        // === Run Code ===
         async function runCode() {
             const code = codeEl.value.trim();
             if (!code) return;
             statusEl.textContent = 'Running...';
-            outputEl.innerHTML += '<span style="color:#888">> run</span>\n';
+            appendOutput('> run', 'info');
             try {
-                const resp = await fetch('/api/lua/execute', { method: 'POST', body: code });
-                const data = await resp.json();
-                if (data.error) {
-                    outputEl.innerHTML += '<span class="error">' + escapeHtml(data.error) + '</span>\n';
-                } else if (data.output) {
-                    outputEl.innerHTML += '<span class="success">' + escapeHtml(data.output) + '</span>\n';
-                }
-            } catch (err) {
-                outputEl.innerHTML += '<span class="error">Network error: ' + escapeHtml(err.message) + '</span>\n';
-            }
-            outputEl.scrollTop = outputEl.scrollHeight;
+                const r = await fetch('/api/lua/execute', { method: 'POST', body: code });
+                const d = await r.json();
+                if (d.error) appendOutput(d.error, 'stderr');
+                else if (d.output) appendOutput(d.output, 'stdout');
+            } catch (e) { appendOutput('Network error: ' + e.message, 'stderr'); }
             statusEl.textContent = 'Ready';
         }
 
-        function clearOutput() { outputEl.innerHTML = ''; }
+        // === Shell ===
+        shellInput.addEventListener('keydown', async function(e) {
+            if (e.key === 'Enter') {
+                const code = this.value.trim();
+                this.value = '';
+                if (!code) return;
+                appendOutput('> ' + code, 'info');
+                try {
+                    const r = await fetch('/api/lua/execute', { method: 'POST', body: code });
+                    const d = await r.json();
+                    if (d.error) appendOutput(d.error, 'stderr');
+                    else if (d.output) appendOutput(d.output, 'stdout');
+                } catch (e) { appendOutput('Network error: ' + e.message, 'stderr'); }
+            }
+        });
 
-        function escapeHtml(s) {
-            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        function appendOutput(text, cls) {
+            const span = document.createElement('span');
+            span.className = cls || '';
+            span.textContent = text + '\n';
+            outputEl.appendChild(span);
+            outputEl.scrollTop = outputEl.scrollHeight;
         }
+        function clearTerminal() { outputEl.innerHTML = ''; }
 
+        // === File Tree ===
+        let currentPath = '/';
         async function loadFiles(path) {
+            currentPath = path || '/';
             try {
-                const resp = await fetch('/api/filesystem' + path);
-                const data = await resp.json();
-                if (data.children) {
-                    const tree = document.getElementById('file-tree');
-                    tree.innerHTML = '';
-                    data.children.forEach(item => {
+                const r = await fetch('/api/filesystem' + currentPath);
+                const d = await r.json();
+                const tree = document.getElementById('file-tree');
+                tree.innerHTML = '';
+                if (d.children) {
+                    d.children.forEach(item => {
                         const el = document.createElement('div');
                         el.className = 'file-item';
                         el.textContent = (item.type === 'dir' ? '📁 ' : '📄 ') + item.name;
-                        el.onclick = () => loadFiles(item.key);
+                        el.dataset.key = item.key;
+                        el.dataset.type = item.type;
+                        el.onclick = () => { if (item.type === 'dir') loadFiles(item.key); };
+                        el.oncontextmenu = (e) => showContextMenu(e, item);
                         tree.appendChild(el);
                     });
                 }
-            } catch (err) {}
+            } catch (e) {}
         }
 
-        // Settings
+        // === Context Menu ===
+        function showContextMenu(e, item) {
+            e.preventDefault();
+            ctxTarget = item;
+            const menu = document.getElementById('context-menu');
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+            menu.classList.add('active');
+        }
+        document.addEventListener('click', () => {
+            document.getElementById('context-menu').classList.remove('active');
+        });
+
+        function ctxNewFile() { openInputModal('New File', '', async (name) => {
+            await fetch('/api/lua/execute', { method: 'POST', body: `fs.write("${ctxTarget.key}/${name}", "")` });
+            loadFiles(currentPath);
+        });}
+        function ctxNewDir() { openInputModal('New Directory', '', async (name) => {
+            await fetch('/api/lua/execute', { method: 'POST', body: `fs.mkdir("${ctxTarget.key}/${name}")` });
+            loadFiles(currentPath);
+        });}
+        function ctxRename() { openInputModal('Rename', ctxTarget.name, async (name) => {
+            await fetch('/api/lua/execute', { method: 'POST', body: `fs.mv("${ctxTarget.key}", "${ctxTarget.key.replace(/\/[^\/]+$/, '')}/${name}")` });
+            loadFiles(currentPath);
+        });}
+        function ctxDelete() {
+            if (confirm('Delete ' + ctxTarget.name + '?')) {
+                fetch('/api/lua/execute', { method: 'POST', body: `fs.rm("${ctxTarget.key}")` }).then(() => loadFiles(currentPath));
+            }
+        }
+
+        // === Input Modal ===
+        let inputCallback = null;
+        function openInputModal(title, value, cb) {
+            document.getElementById('input-modal-title').textContent = title;
+            document.getElementById('input-modal-value').value = value;
+            document.getElementById('input-modal').classList.add('active');
+            document.getElementById('input-modal-value').focus();
+            inputCallback = cb;
+        }
+        function closeInputModal() { document.getElementById('input-modal').classList.remove('active'); }
+        function confirmInputModal() {
+            const v = document.getElementById('input-modal-value').value.trim();
+            if (v && inputCallback) inputCallback(v);
+            closeInputModal();
+        }
+        document.getElementById('input-modal-value').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') confirmInputModal();
+            if (e.key === 'Escape') closeInputModal();
+        });
+
+        // === Resize Terminal ===
+        const handle = document.getElementById('resize-handle');
+        const terminal = document.getElementById('terminal');
+        let resizing = false;
+        handle.addEventListener('mousedown', (e) => { resizing = true; e.preventDefault(); });
+        document.addEventListener('mousemove', (e) => {
+            if (!resizing) return;
+            const h = window.innerHeight - e.clientY - 30;
+            terminal.style.height = Math.max(80, Math.min(500, h)) + 'px';
+        });
+        document.addEventListener('mouseup', () => { resizing = false; });
+
+        // === Settings ===
         async function openSettings() {
             try {
-                const resp = await fetch('/api/settings');
-                const cfg = await resp.json();
-                document.getElementById('s-server-listen').value = cfg.Server?.Listen || ':8080';
-                document.getElementById('s-server-timeout').value = cfg.Server?.Timeout || '30s';
-                document.getElementById('s-db-path').value = cfg.Database?.Path || './data/koi.db';
-                document.getElementById('s-sec-timeout').value = cfg.Security?.MaxTimeout || 60;
-                document.getElementById('s-sec-memory').value = cfg.Security?.MaxMemory || 1073741824;
-                document.getElementById('s-sec-matrix').value = cfg.Security?.MaxMatrixSize || 10000;
-                document.getElementById('s-sec-tensor').value = cfg.Security?.MaxTensorNdim || 8;
-                document.getElementById('s-engine-edition').value = cfg.Engine?.Edition || 'full';
-                document.getElementById('s-ui-theme').value = cfg.UI?.Theme || 'dark';
-                document.getElementById('s-ui-fontsize').value = cfg.UI?.FontSize || 14;
-                document.getElementById('s-ui-tabsize').value = cfg.UI?.TabSize || 4;
-            } catch (err) {}
+                const r = await fetch('/api/settings');
+                const c = await r.json();
+                document.getElementById('s-sec-timeout').value = c.security?.max_timeout || 60;
+                document.getElementById('s-sec-matrix').value = c.security?.max_matrix_size || 10000;
+                document.getElementById('s-ui-theme').value = c.ui?.theme || 'dark';
+            } catch (e) {}
             document.getElementById('settings-modal').classList.add('active');
         }
-
-        function closeSettings() {
-            document.getElementById('settings-modal').classList.remove('active');
-        }
-
+        function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
         async function saveSettings() {
             const cfg = {
-                server: {
-                    Listen: document.getElementById('s-server-listen').value,
-                    Timeout: document.getElementById('s-server-timeout').value,
-                },
-                database: {
-                    Path: document.getElementById('s-db-path').value,
-                },
                 security: {
-                    MaxTimeout: parseInt(document.getElementById('s-sec-timeout').value),
-                    MaxMemory: parseInt(document.getElementById('s-sec-memory').value),
-                    MaxMatrixSize: parseInt(document.getElementById('s-sec-matrix').value),
-                    MaxTensorNdim: parseInt(document.getElementById('s-sec-tensor').value),
+                    max_timeout: parseInt(document.getElementById('s-sec-timeout').value),
+                    max_matrix_size: parseInt(document.getElementById('s-sec-matrix').value),
                 },
-                engine: {
-                    Edition: document.getElementById('s-engine-edition').value,
-                },
-                ui: {
-                    Theme: document.getElementById('s-ui-theme').value,
-                    FontSize: parseInt(document.getElementById('s-ui-fontsize').value),
-                    TabSize: parseInt(document.getElementById('s-ui-tabsize').value),
-                },
+                ui: { theme: document.getElementById('s-ui-theme').value },
             };
-
-            try {
-                const resp = await fetch('/api/settings/update', {
-                    method: 'POST',
-                    body: JSON.stringify(cfg),
-                });
-                const data = await resp.json();
-                if (data.status === 'ok') {
-                    closeSettings();
-                    statusEl.textContent = 'Settings saved';
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (err) {
-                alert('Error: ' + err.message);
-            }
+            await fetch('/api/settings/update', { method: 'POST', body: JSON.stringify(cfg) });
+            closeSettings();
+            statusEl.textContent = 'Settings saved';
         }
 
         loadFiles('/');
