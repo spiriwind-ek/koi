@@ -121,6 +121,17 @@ POST /api/settings/update
 | `math.norm(a)` | 向量范数 |
 | `math.cross(a, b)` | 叉积（3D） |
 
+## 文档
+
+- [VISION.md](docs/VISION.md) — 长期愿景与架构目标
+- [ROADMAP.md](docs/ROADMAP.md) — 分阶段实施计划
+- [GATEWAY_DESIGN.md](docs/GATEWAY_DESIGN.md) — Gateway 设计
+- [ENGINE_DESIGN.md](docs/ENGINE_DESIGN.md) — Engine 设计（计划中）
+- [MATH_API.md](docs/MATH_API.md) — 数学 API 参考
+- [SQL_CONFIG.md](docs/SQL_CONFIG.md) — 数据库与配置
+- [PERFORMANCE.md](docs/PERFORMANCE.md) — 性能与优化
+- [WEBUI_DESIGN.md](docs/WEBUI_DESIGN.md) — 前端设计
+
 ## 项目结构
 
 ```
