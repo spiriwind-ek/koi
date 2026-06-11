@@ -1,0 +1,23 @@
+# Koi Configuration
+
+[server]
+listen = ":8080"              # 监听地址
+timeout = "30s"               # Lua 执行超时
+
+[database]
+path = "./data/koi.db"        # 数据库路径
+
+[security]
+max_timeout = 60              # 最大执行超时（秒）
+max_memory = 1073741824       # 最大内存（字节，1GB）
+max_matrix_size = 10000       # 最大矩阵维度
+max_tensor_ndim = 8           # 最大张量维度
+
+[engine]
+edition = "full"              # full 或 lite
+
+[ui]
+theme = "dark"                # dark 或 light
+auto_save = true              # 自动保存
+font_size = 14                # 编辑器字体大小
+tab_size = 4                  # Tab 宽度
