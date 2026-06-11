@@ -31,7 +31,6 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 	safe := map[string]interface{}{
 		"security": map[string]interface{}{
 			"max_timeout":     s.Cfg.Security.MaxTimeout,
@@ -46,7 +45,6 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			"tab_size":  s.Cfg.UI.TabSize,
 		},
 	}
-
 	data, _ := json.Marshal(safe)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
@@ -57,19 +55,17 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w, "read body", http.StatusBadRequest)
 		return
 	}
-
 	var update struct {
 		Security *struct {
-			MaxTimeout     int `json:"max_timeout"`
-			MaxMemory      int `json:"max_memory"`
-			MaxMatrixSize  int `json:"max_matrix_size"`
-			MaxTensorNdim  int `json:"max_tensor_ndim"`
+			MaxTimeout    int `json:"max_timeout"`
+			MaxMemory     int `json:"max_memory"`
+			MaxMatrixSize int `json:"max_matrix_size"`
+			MaxTensorNdim int `json:"max_tensor_ndim"`
 		} `json:"security,omitempty"`
 		UI *struct {
 			Theme    string `json:"theme"`
@@ -77,12 +73,10 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 			TabSize  int    `json:"tab_size"`
 		} `json:"ui,omitempty"`
 	}
-
 	if err := json.Unmarshal(body, &update); err != nil {
 		writeError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	if update.Security != nil {
 		s.Cfg.Security.MaxTimeout = update.Security.MaxTimeout
 		s.Cfg.Security.MaxMemory = update.Security.MaxMemory
@@ -94,7 +88,6 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		s.Cfg.UI.FontSize = update.UI.FontSize
 		s.Cfg.UI.TabSize = update.UI.TabSize
 	}
-
 	writeJSON(w, `{"status":"ok"}`)
 }
 
@@ -103,13 +96,11 @@ func (s *Server) handleLuaExecute(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w, "read body", http.StatusBadRequest)
 		return
 	}
-
 	code := strings.TrimSpace(string(body))
 	if code == "" {
 		writeError(w, "empty code", http.StatusBadRequest)
@@ -118,22 +109,36 @@ func (s *Server) handleLuaExecute(w http.ResponseWriter, r *http.Request) {
 
 	L := s.VMPool.Get()
 
-	// Capture io.print output
+	// Capture print output with table serialization
 	var output []string
-	if ioTbl, ok := L.GetGlobal("io").(*lua.LTable); ok {
-		L.SetField(ioTbl, "print", L.NewFunction(func(L *lua.LState) int {
-			top := L.GetTop()
-			args := make([]interface{}, top)
-			for i := 1; i <= top; i++ {
-				args[i-1] = L.Get(i).String()
+	capturePrint := L.NewFunction(func(L *lua.LState) int {
+		top := L.GetTop()
+		parts := make([]string, top)
+		for i := 1; i <= top; i++ {
+			val := L.Get(i)
+			if tbl, ok := val.(*lua.LTable); ok {
+				parts[i-1] = serializeTableForOutput(L, tbl)
+			} else {
+				parts[i-1] = val.String()
 			}
-			output = append(output, fmt.Sprint(args...))
-			return 0
-		}))
+		}
+		output = append(output, strings.Join(parts, "\t"))
+		return 0
+	})
+	L.SetGlobal("print", capturePrint)
+	if ioTbl, ok := L.GetGlobal("io").(*lua.LTable); ok {
+		L.SetField(ioTbl, "print", capturePrint)
 	}
 
+	// Try as expression first (auto-print return value), then as statement
 	done := make(chan error, 1)
-	go func() { done <- L.DoString(code) }()
+	go func() {
+		err := L.DoString("local __r = (" + code + "); if __r ~= nil then print(__r) end")
+		if err != nil {
+			err = L.DoString(code)
+		}
+		done <- err
+	}()
 
 	select {
 	case <-time.After(s.Cfg.GetTimeout()):
@@ -158,18 +163,15 @@ func (s *Server) handleFilesystem(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/filesystem")
 	if path == "" {
 		path = "/"
 	}
-
 	node, err := s.DB.GetNode(path)
 	if err != nil {
 		writeError(w, "not found", http.StatusNotFound)
 		return
 	}
-
 	if node.ObjType == "dir" {
 		children, err := s.DB.ListChildren(path)
 		if err != nil {
@@ -197,4 +199,32 @@ func (s *Server) handleFilesystem(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(data)
 	}
+}
+
+// serializeTableForOutput pretty-prints a Lua table
+func serializeTableForOutput(L *lua.LState, tbl *lua.LTable) string {
+	maxN := tbl.MaxN()
+	if maxN > 0 {
+		parts := make([]string, maxN)
+		for i := 1; i <= maxN; i++ {
+			val := tbl.RawGetInt(i)
+			if sub, ok := val.(*lua.LTable); ok {
+				parts[i-1] = serializeTableForOutput(L, sub)
+			} else {
+				parts[i-1] = val.String()
+			}
+		}
+		return "{" + strings.Join(parts, ", ") + "}"
+	}
+	var parts []string
+	tbl.ForEach(func(key, value lua.LValue) {
+		var valStr string
+		if sub, ok := value.(*lua.LTable); ok {
+			valStr = serializeTableForOutput(L, sub)
+		} else {
+			valStr = value.String()
+		}
+		parts = append(parts, key.String()+"="+valStr)
+	})
+	return "{" + strings.Join(parts, ", ") + "}"
 }

@@ -2,6 +2,7 @@ package lua
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	lua "github.com/yuin/gopher-lua"
@@ -16,6 +17,7 @@ func SetupSandbox(L *lua.LState, db *storage.DB, cfg *config.Config) {
 	L.SetGlobal("require", lua.LNil)
 	L.SetGlobal("module", lua.LNil)
 	L.SetGlobal("package", lua.LNil)
+	L.SetGlobal("debug", lua.LNil)
 
 	// Safe os table
 	osTable := L.NewTable()
@@ -25,10 +27,16 @@ func SetupSandbox(L *lua.LState, db *storage.DB, cfg *config.Config) {
 	L.SetField(osTable, "edition", L.NewFunction(osEdition(cfg)))
 	L.SetGlobal("os", osTable)
 
-	// Safe io table
+	// Safe io table with print that handles tables
 	ioTable := L.NewTable()
 	L.SetField(ioTable, "print", L.NewFunction(ioPrint))
 	L.SetGlobal("io", ioTable)
+
+	// Override global print to handle tables
+	L.SetGlobal("print", L.NewFunction(ioPrint))
+
+	// Add table serializer
+	L.SetGlobal("serialize", L.NewFunction(luaSerialize))
 
 	// fs API
 	fsTable := L.NewTable()
@@ -40,7 +48,7 @@ func SetupSandbox(L *lua.LState, db *storage.DB, cfg *config.Config) {
 	L.SetField(fsTable, "exists", L.NewFunction(fsExists(db)))
 	L.SetGlobal("fs", fsTable)
 
-	// math API (gonum-powered, with security limits)
+	// math API
 	mathTable := L.NewTable()
 	L.SetField(mathTable, "mat_new", L.NewFunction(mathMatNew(db, cfg)))
 	L.SetField(mathTable, "mat_mul", L.NewFunction(mathMatMul(db)))
@@ -81,12 +89,60 @@ func osEdition(cfg *config.Config) lua.LGFunction {
 	}
 }
 
+// io.print that handles tables properly
 func ioPrint(L *lua.LState) int {
 	top := L.GetTop()
-	args := make([]interface{}, top)
+	parts := make([]string, top)
 	for i := 1; i <= top; i++ {
-		args[i-1] = L.Get(i).String()
+		val := L.Get(i)
+		if tbl, ok := val.(*lua.LTable); ok {
+			parts[i-1] = serializeTable(L, tbl)
+		} else {
+			parts[i-1] = val.String()
+		}
 	}
-	L.Push(lua.LString(fmt.Sprint(args...)))
+	fmt.Println(strings.Join(parts, "\t"))
+	return 0
+}
+
+// serialize: convert any Lua value to string
+func luaSerialize(L *lua.LState) int {
+	val := L.CheckAny(1)
+	if tbl, ok := val.(*lua.LTable); ok {
+		L.Push(lua.LString(serializeTable(L, tbl)))
+	} else {
+		L.Push(lua.LString(val.String()))
+	}
 	return 1
+}
+
+// serializeTable: pretty-print a Lua table
+func serializeTable(L *lua.LState, tbl *lua.LTable) string {
+	// Check if it's an array (sequential integer keys)
+	maxN := tbl.MaxN()
+	if maxN > 0 {
+		parts := make([]string, maxN)
+		for i := 1; i <= maxN; i++ {
+			val := tbl.RawGetInt(i)
+			if sub, ok := val.(*lua.LTable); ok {
+				parts[i-1] = serializeTable(L, sub)
+			} else {
+				parts[i-1] = val.String()
+			}
+		}
+		return "{" + strings.Join(parts, ", ") + "}"
+	}
+
+	// Otherwise, key-value table
+	var parts []string
+	tbl.ForEach(func(key, value lua.LValue) {
+		var valStr string
+		if sub, ok := value.(*lua.LTable); ok {
+			valStr = serializeTable(L, sub)
+		} else {
+			valStr = value.String()
+		}
+		parts = append(parts, key.String()+"="+valStr)
+	})
+	return "{" + strings.Join(parts, ", ") + "}"
 }
