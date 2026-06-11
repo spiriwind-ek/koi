@@ -1,11 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
+	"io"
 	"strings"
 
+	"github.com/chzyer/readline"
 	lua "github.com/yuin/gopher-lua"
 	"koi/config"
 	luavm "koi/lua"
@@ -27,23 +27,76 @@ func runShell(db *storage.DB, cfg *config.Config) {
 		return 0
 	})
 	L.SetGlobal("print", printFn)
-
 	if ioTbl, ok := L.GetGlobal("io").(*lua.LTable); ok {
 		L.SetField(ioTbl, "print", printFn)
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
+	// Tab completions
+	completes := []string{
+		"fs.mkdir(", "fs.write(", "fs.read(", "fs.ls(", "fs.rm(", "fs.exists(",
+		"math.mat_new(", "math.mat_mul(", "math.mat_transpose(", "math.mat_determinant(",
+		"math.mat_inverse(", "math.mat_print(", "math.mat_shape(",
+		"math.tensor_new(", "math.tensor_print(", "math.tensor_shape(",
+		"math.dot(", "math.norm(", "math.cross(",
+		"io.print(", "os.time()", "os.clock()", "os.version()", "os.edition()",
+		"serialize(", "help", "exit", "quit",
+	}
+
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:       "\033[31m>\033[0m ",
+		HistoryFile:  "/tmp/.koi_history",
+		AutoComplete: readline.NewPrefixCompleter(
+			readline.PcItem("fs.mkdir("),
+			readline.PcItem("fs.write("),
+			readline.PcItem("fs.read("),
+			readline.PcItem("fs.ls("),
+			readline.PcItem("fs.rm("),
+			readline.PcItem("fs.exists("),
+			readline.PcItem("math.mat_new("),
+			readline.PcItem("math.mat_mul("),
+			readline.PcItem("math.mat_transpose("),
+			readline.PcItem("math.mat_determinant("),
+			readline.PcItem("math.mat_inverse("),
+			readline.PcItem("math.mat_print("),
+			readline.PcItem("math.mat_shape("),
+			readline.PcItem("math.tensor_new("),
+			readline.PcItem("math.tensor_print("),
+			readline.PcItem("math.tensor_shape("),
+			readline.PcItem("math.dot("),
+			readline.PcItem("math.norm("),
+			readline.PcItem("math.cross("),
+			readline.PcItem("io.print("),
+			readline.PcItem("os.time()"),
+			readline.PcItem("os.clock()"),
+			readline.PcItem("os.version()"),
+			readline.PcItem("os.edition()"),
+			readline.PcItem("serialize("),
+			readline.PcItem("help"),
+			readline.PcItem("exit"),
+			readline.PcItem("quit"),
+		),
+	})
+	if err != nil {
+		fmt.Printf("Failed to init readline: %v\n", err)
+		return
+	}
+	defer rl.Close()
+
 	fmt.Println("Koi 0.0.1-Alpha — Lua Shell")
-	fmt.Println("Type 'help' for available commands, 'exit' to quit.")
+	fmt.Println("Type 'help' for commands, 'exit' to quit. Tab for completion.")
 	fmt.Println()
 
 	for {
-		fmt.Print("> ")
-		if !scanner.Scan() {
+		line, err := rl.Readline()
+		if err == readline.ErrInterrupt || err == io.EOF {
 			break
 		}
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			continue
+		}
 
-		line := strings.TrimSpace(scanner.Text())
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
@@ -55,7 +108,8 @@ func runShell(db *storage.DB, cfg *config.Config) {
 			continue
 		}
 
-		err := L.DoString("local _r = " + line + "; if _r ~= nil then print(_r) end")
+		// Try as expression first (auto-print), then as statement
+		err = L.DoString("local __r = (" + line + "); if __r ~= nil then print(__r) end")
 		if err != nil {
 			err = L.DoString(line)
 			if err != nil {
@@ -104,6 +158,13 @@ System:
   os.clock()          CPU time
   os.version()        Koi version
   os.edition()        Edition (full/lite)
+  serialize(value)    Serialize any value to string
+
+Shortcuts:
+  Tab                 Auto-complete
+  ↑/↓                 Browse history
+  Ctrl+C              Cancel / Exit
+  Ctrl+L              Clear screen
 
 Note: Paths must be quoted!
   ✗ fs.mkdir(test)
