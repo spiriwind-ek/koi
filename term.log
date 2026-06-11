@@ -1,0 +1,93 @@
+命令:
+
+  help                  显示帮助
+  
+    clear                 清空终端
+    
+    
+    
+    文件系统:
+    
+      fs.mkdir(path)        创建目录
+      
+        fs.write(path, val)   写入值
+        
+          fs.read(path)         读取值
+          
+            fs.ls(path)           列出内容
+            
+              fs.rm(path)           删除
+              
+                fs.exists(path)       检查存在
+                
+                
+                
+                矩阵:
+                
+                  math.mat_new(path, r, c, data)   创建
+                  
+                    math.mat_mul(a, b, result)       乘法
+                    
+                      math.mat_transpose(path, result) 转置
+                      
+                        math.mat_determinant(path)       行列式
+                        
+                          math.mat_inverse(path, result)   逆矩阵
+                          
+                            math.mat_print(path)             打印
+                            
+                              math.mat_shape(path)             形状
+                              
+                              
+                              
+                              向量:
+                              
+                                math.dot(a, b)        点积
+                                
+                                  math.norm(a)          范数
+                                  
+                                    math.cross(a, b)      叉积 (3D)
+                                    
+                                    
+                                    
+                                    示例:
+                                    
+                                      math.mat_new("/data/A", 2, 2, {1,2,3,4})
+                                      
+                                        math.mat_print("/data/A")
+                                        
+                                          fs.write("/home/user/x", 42)
+                                          
+                                          > fs.mkdir(test)
+                                          
+                                          <string>:1: bad argument #1 to mkdir (string expected, got nil)
+                                          
+                                          stack traceback:
+                                          
+                                            [G]: in function 'mkdir'
+                                            
+                                                <string>:1: in main chunk
+                                                
+                                                    [G]: ?
+                                                    
+                                                    > fs.mkdir(/test)
+                                                    
+                                                    <string> line:1(column:10) near '/':   syntax error
+                                                    
+                                                    
+                                                    
+                                                    > fs.mkdir(/)
+                                                    
+                                                    <string> line:1(column:10) near '/':   syntax error
+                                                    
+                                                    
+                                                    
+                                                    > fs.mkdir(/data/test)
+                                                    
+                                                    <string> line:1(column:10) near '/':   syntax error
+                                                    
+                                                    
+                                                    
+                                                    > fs.mkdir(/home/test)
+                                                    
+                                                    <string> line:1(column:10) near '/':   syntax error
