@@ -59,7 +59,6 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 			next(w, r)
 			return
 		}
-
 		auth := r.Header.Get("Authorization")
 		if strings.HasPrefix(auth, "Bearer ") {
 			token := strings.TrimPrefix(auth, "Bearer ")
@@ -68,12 +67,10 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 		}
-
 		if r.URL.Query().Get("api_key") == s.apiKey {
 			next(w, r)
 			return
 		}
-
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 	}
 }
@@ -87,27 +84,16 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 	safe := map[string]interface{}{
-		"server": map[string]interface{}{
-			"timeout": s.cfg.Server.Timeout,
-		},
 		"security": map[string]interface{}{
 			"max_timeout":     s.cfg.Security.MaxTimeout,
 			"max_memory":      s.cfg.Security.MaxMemory,
 			"max_matrix_size": s.cfg.Security.MaxMatrixSize,
 			"max_tensor_ndim": s.cfg.Security.MaxTensorNdim,
 		},
-		"engine": map[string]interface{}{
-			"edition": s.cfg.Engine.Edition,
-		},
-		"ui": map[string]interface{}{
-			"theme":     s.cfg.UI.Theme,
-			"font_size": s.cfg.UI.FontSize,
-			"tab_size":  s.cfg.UI.TabSize,
-		},
+		"engine": map[string]interface{}{"edition": s.cfg.Engine.Edition},
+		"ui":     map[string]interface{}{"theme": s.cfg.UI.Theme, "font_size": s.cfg.UI.FontSize, "tab_size": s.cfg.UI.TabSize},
 	}
-
 	data, _ := json.Marshal(safe)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
@@ -118,30 +104,25 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "read body", http.StatusBadRequest)
 		return
 	}
-
 	var update struct {
 		Security *config.SecurityConfig `json:"security,omitempty"`
 		UI       *config.UIConfig       `json:"ui,omitempty"`
 	}
-
 	if err := json.Unmarshal(body, &update); err != nil {
 		writeJSON(w, fmt.Sprintf(`{"error":%q}`, err.Error()))
 		return
 	}
-
 	if update.Security != nil {
 		s.cfg.Security = *update.Security
 	}
 	if update.UI != nil {
 		s.cfg.UI = *update.UI
 	}
-
 	writeJSON(w, `{"status":"ok"}`)
 }
 
@@ -150,13 +131,11 @@ func (s *Server) handleLuaExecute(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "read body", http.StatusBadRequest)
 		return
 	}
-
 	code := strings.TrimSpace(string(body))
 	if code == "" {
 		http.Error(w, "empty code", http.StatusBadRequest)
@@ -164,7 +143,6 @@ func (s *Server) handleLuaExecute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	L := s.vmPool.Get()
-
 	var output []string
 	ioTbl, ok := L.GetGlobal("io").(*lua.LTable)
 	if ok {
@@ -180,9 +158,7 @@ func (s *Server) handleLuaExecute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	done := make(chan error, 1)
-	go func() {
-		done <- L.DoString(code)
-	}()
+	go func() { done <- L.DoString(code) }()
 
 	select {
 	case <-time.After(s.cfg.GetTimeout()):
@@ -208,51 +184,43 @@ func (s *Server) handleFilesystem(w http.ResponseWriter, r *http.Request) {
 		path = "/"
 	}
 
-	switch r.Method {
-	case http.MethodGet:
-		if s.db.NodeExists(path) {
-			node, err := s.db.GetNode(path)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			resp := map[string]interface{}{
-				"key":  node.Key,
-				"name": node.Name,
-				"type": node.ObjType,
-			}
-			if node.Value != nil {
-				resp["value"] = *node.Value
-			}
-			data, _ := json.Marshal(resp)
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(data)
-		} else {
-			children, err := s.db.ListChildren(path)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			type childInfo struct {
-				Name string `json:"name"`
-				Type string `json:"type"`
-				Key  string `json:"key"`
-			}
-			items := make([]childInfo, len(children))
-			for i, c := range children {
-				items[i] = childInfo{Name: c.Name, Type: c.ObjType, Key: c.Key}
-			}
-			resp := map[string]interface{}{
-				"path":     path,
-				"children": items,
-			}
-			data, _ := json.Marshal(resp)
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(data)
-		}
-
-	default:
+	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	node, err := s.db.GetNode(path)
+	if err != nil {
+		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+		return
+	}
+
+	if node.ObjType == "dir" {
+		children, err := s.db.ListChildren(path)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		type childInfo struct {
+			Name string `json:"name"`
+			Type string `json:"type"`
+			Key  string `json:"key"`
+		}
+		items := make([]childInfo, len(children))
+		for i, c := range children {
+			items[i] = childInfo{Name: c.Name, Type: c.ObjType, Key: c.Key}
+		}
+		data, _ := json.Marshal(map[string]interface{}{"path": path, "children": items})
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
+	} else {
+		resp := map[string]interface{}{"key": node.Key, "name": node.Name, "type": node.ObjType}
+		if node.Value != nil {
+			resp["value"] = *node.Value
+		}
+		data, _ := json.Marshal(resp)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
 	}
 }
 
