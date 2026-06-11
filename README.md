@@ -133,11 +133,14 @@ POST /api/settings/update
 ```
 koi/
 ├── main.go              # 入口
+├── shell.go             # CLI Shell
 ├── config/
 │   ├── config.go        # 配置加载器
 │   └── koi.toml         # 默认配置
 ├── gateway/
-│   └── server.go        # HTTP 服务器
+│   ├── core.go          # 核心结构体、路由注册
+│   ├── auth.go          # 认证中间件、CORS
+│   └── handlers.go      # API 处理器
 ├── lua/
 │   ├── vm.go            # Lua VM 池
 │   ├── sandbox.go       # 沙箱环境
@@ -150,8 +153,8 @@ koi/
 ├── sql/
 │   └── schema.sql       # 数据库 Schema
 ├── docs/                # 文档
+├── Makefile             # 构建脚本
 ├── LICENSE              # MPL-2.0
-├── LICENSE-CN           # 木兰宽松许可证 v2
 └── CONTRIBUTING.md      # 贡献指南
 ```
 

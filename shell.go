@@ -33,7 +33,7 @@ func runShell(db *storage.DB, cfg *config.Config) {
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Println("Koi 0.1.0-mvp — Lua Shell")
+	fmt.Println("Koi 0.0.1-Alpha — Lua Shell")
 	fmt.Println("Type 'help' for available commands, 'exit' to quit.")
 	fmt.Println()
 

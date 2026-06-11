@@ -70,7 +70,7 @@ func osClock(L *lua.LState) int {
 }
 
 func osVersion(L *lua.LState) int {
-	L.Push(lua.LString("koi 0.1.0-mvp"))
+	L.Push(lua.LString("koi 0.0.1-Alpha"))
 	return 1
 }
 

@@ -1,7 +1,7 @@
 # Koi — Long-Term Vision
 
 > **Status**: This document describes the long-term architectural vision for Koi.
-> The current implementation (v0.1.0-mvp) covers Phase 1 only. See [ROADMAP.md](ROADMAP.md)
+> The current implementation (v0.0.1-Alpha) covers Phase 1 only. See [ROADMAP.md](ROADMAP.md)
 > for the phased implementation plan.
 
 ## What Koi Is
@@ -12,7 +12,7 @@ data in a virtual filesystem backed by SQLite.
 
 **Name**: Koi (鯉) — A koi fish grows from a small pond to a vast ocean.
 
-## Current Implementation (v0.1.0-mvp)
+## Current Implementation (v0.0.1-Alpha)
 
 ```
 Browser (HTML/JS)

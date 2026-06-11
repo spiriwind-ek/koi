@@ -31,7 +31,7 @@ func runServerMode() {
 	flag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Printf("Koi 0.1.0-mvp starting...")
+	log.Printf("Koi 0.0.1-Alpha starting...")
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {

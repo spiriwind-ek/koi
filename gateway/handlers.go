@@ -23,7 +23,7 @@ func writeError(w http.ResponseWriter, msg string, code int) {
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, `{"status":"ok","version":"0.1.0-mvp"}`)
+	writeJSON(w, `{"status":"ok","version":"0.0.1-Alpha"}`)
 }
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {

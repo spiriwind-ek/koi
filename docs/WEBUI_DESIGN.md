@@ -17,7 +17,7 @@ Single file: `web/index.html` (~300 lines)
 │ (files)  │ (textarea)           │ (output)      │
 │          │                      │               │
 ├──────────┴──────────────────────┴───────────────┤
-│ Status bar: Ready | Koi v0.1.0-mvp              │
+│ Status bar: Ready | Koi v0.0.1-Alpha              │
 └─────────────────────────────────────────────────┘
 ```
 
