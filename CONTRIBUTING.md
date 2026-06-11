@@ -110,4 +110,4 @@ L.SetField(mathTable, "my_function", L.NewFunction(mathMyFunction))
 
 ## 许可证
 
-贡献的代码将在项目的双许可证（MPL-2.0 / MulanPSL-2.0）下发布。
+贡献的代码将在项目的 MPL-2.0 许可证下发布。

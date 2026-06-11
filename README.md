@@ -150,12 +150,7 @@ koi/
 
 ## 许可证
 
-本项目采用双许可证：
-
-- [MPL-2.0](LICENSE)（Mozilla Public License 2.0）
-- [MulanPSL-2.0](LICENSE-CN)（木兰宽松许可证 第2版）
-
-您可以选择其中任一许可证使用本项目。
+本项目采用 [MPL-2.0](LICENSE)（Mozilla Public License 2.0）许可证。
 
 ## 贡献
 
