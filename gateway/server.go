@@ -30,7 +30,7 @@ type Server struct {
 func NewServer(db *storage.DB, cfg *config.Config, webDir string, apiKey string) *Server {
 	return &Server{
 		db:     db,
-		vmPool:   luavm.NewVMPool(db, cfg),
+		vmPool: luavm.NewVMPool(db, cfg),
 		cfg:    cfg,
 		webDir: webDir,
 		apiKey: apiKey,
@@ -53,7 +53,6 @@ func (s *Server) Handler() http.Handler {
 	return corsMiddleware(logMiddleware(mux))
 }
 
-// requireAuth wraps a handler with API key authentication.
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.apiKey == "" {
@@ -61,7 +60,6 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// Check Authorization header: "Bearer <key>"
 		auth := r.Header.Get("Authorization")
 		if strings.HasPrefix(auth, "Bearer ") {
 			token := strings.TrimPrefix(auth, "Bearer ")
@@ -71,7 +69,6 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
-		// Also check query parameter
 		if r.URL.Query().Get("api_key") == s.apiKey {
 			next(w, r)
 			return
@@ -91,14 +88,13 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Only return safe settings, not paths
 	safe := map[string]interface{}{
 		"server": map[string]interface{}{
 			"timeout": s.cfg.Server.Timeout,
 		},
 		"security": map[string]interface{}{
-			"max_timeout":    s.cfg.Security.MaxTimeout,
-			"max_memory":     s.cfg.Security.MaxMemory,
+			"max_timeout":     s.cfg.Security.MaxTimeout,
+			"max_memory":      s.cfg.Security.MaxMemory,
 			"max_matrix_size": s.cfg.Security.MaxMatrixSize,
 			"max_tensor_ndim": s.cfg.Security.MaxTensorNdim,
 		},
@@ -106,7 +102,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			"edition": s.cfg.Engine.Edition,
 		},
 		"ui": map[string]interface{}{
-			"theme":    s.cfg.UI.Theme,
+			"theme":     s.cfg.UI.Theme,
 			"font_size": s.cfg.UI.FontSize,
 			"tab_size":  s.cfg.UI.TabSize,
 		},
@@ -169,7 +165,6 @@ func (s *Server) handleLuaExecute(w http.ResponseWriter, r *http.Request) {
 
 	L := s.vmPool.Get()
 
-	// Capture io.print output
 	var output []string
 	ioTbl, ok := L.GetGlobal("io").(*lua.LTable)
 	if ok {
@@ -191,7 +186,6 @@ func (s *Server) handleLuaExecute(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case <-time.After(s.cfg.GetTimeout()):
-		// P0 fix: discard VM on timeout, don't return to pool
 		s.vmPool.Discard(L)
 		writeJSON(w, `{"error":"execution timeout"}`)
 		return
@@ -201,7 +195,6 @@ func (s *Server) handleLuaExecute(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, fmt.Sprintf(`{"error":%q}`, err.Error()))
 			return
 		}
-		// Only return VM to pool on success
 		s.vmPool.Put(L)
 	}
 
@@ -294,7 +287,7 @@ func writeJSON(w http.ResponseWriter, data string) {
 }
 
 func FindWebDir() string {
-	candidates := []string{"./web", "../web", "./gateway/web"}
+	candidates := []string{"./web", "../web"}
 	for _, dir := range candidates {
 		if _, err := os.Stat(filepath.Join(dir, "index.html")); err == nil {
 			return dir

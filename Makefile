@@ -3,10 +3,10 @@
 all: build
 
 build:
-	go build -o koi .
+	CGO_ENABLED=1 go build -o koi .
 
 run: build
-	./koi -web ./web
+	./koi
 
 clean:
 	rm -f koi

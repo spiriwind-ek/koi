@@ -18,7 +18,7 @@ func main() {
 	configPath := flag.String("config", "config/koi.toml", "config file path")
 	listen := flag.String("listen", "", "override listen address")
 	dbPath := flag.String("db", "", "override database path")
-	webDir := flag.String("web", "", "web directory")
+	webDir := flag.String("web", "web", "web directory")
 	apiKey := flag.String("api-key", "", "API key for authentication (empty = no auth)")
 	flag.Parse()
 
@@ -38,7 +38,6 @@ func main() {
 		cfg.Database.Path = *dbPath
 	}
 
-	// Allow API key from environment
 	key := *apiKey
 	if key == "" {
 		key = os.Getenv("KOI_API_KEY")
@@ -51,12 +50,7 @@ func main() {
 	defer db.Close()
 	log.Printf("Database: %s", cfg.Database.Path)
 
-	dir := *webDir
-	if dir == "" {
-		dir = gateway.FindWebDir()
-	}
-
-	srv := gateway.NewServer(db, cfg, dir, key)
+	srv := gateway.NewServer(db, cfg, *webDir, key)
 
 	httpServer := &http.Server{
 		Addr:         cfg.Server.Listen,

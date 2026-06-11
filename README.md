@@ -20,17 +20,12 @@
 - Go 1.21+
 - GCC（CGO 编译 SQLite 需要）
 
-### 构建
+### 构建与运行
 
 ```bash
 go mod tidy
 CGO_ENABLED=1 go build -o koi .
-```
-
-### 运行
-
-```bash
-./koi -web ./web
+./koi
 ```
 
 浏览器打开 `http://localhost:8080`。
