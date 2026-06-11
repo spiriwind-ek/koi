@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,28 +20,30 @@ import (
 )
 
 type Server struct {
-	db      *storage.DB
-	vmPool  *luavm.VMPool
-	cfg     *config.Config
-	webDir  string
+	db       *storage.DB
+	vmPool   *luavm.VMPool
+	cfg      *config.Config
+	webDir   string
+	apiKey   string
 }
 
-func NewServer(db *storage.DB, cfg *config.Config, webDir string) *Server {
+func NewServer(db *storage.DB, cfg *config.Config, webDir string, apiKey string) *Server {
 	return &Server{
 		db:     db,
-		vmPool: luavm.NewVMPool(db),
+		vmPool:   luavm.NewVMPool(db, cfg),
 		cfg:    cfg,
 		webDir: webDir,
+		apiKey: apiKey,
 	}
 }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/api/lua/execute", s.handleLuaExecute)
-	mux.HandleFunc("/api/filesystem/", s.handleFilesystem)
-	mux.HandleFunc("/api/settings", s.handleSettings)
-	mux.HandleFunc("/api/settings/update", s.handleSettingsUpdate)
+	mux.HandleFunc("/api/lua/execute", s.requireAuth(s.handleLuaExecute))
+	mux.HandleFunc("/api/filesystem/", s.requireAuth(s.handleFilesystem))
+	mux.HandleFunc("/api/settings", s.requireAuth(s.handleSettings))
+	mux.HandleFunc("/api/settings/update", s.requireAuth(s.handleSettingsUpdate))
 	mux.HandleFunc("/api/health", s.handleHealth)
 
 	if s.webDir != "" {
@@ -48,6 +51,34 @@ func (s *Server) Handler() http.Handler {
 	}
 
 	return corsMiddleware(logMiddleware(mux))
+}
+
+// requireAuth wraps a handler with API key authentication.
+func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.apiKey == "" {
+			next(w, r)
+			return
+		}
+
+		// Check Authorization header: "Bearer <key>"
+		auth := r.Header.Get("Authorization")
+		if strings.HasPrefix(auth, "Bearer ") {
+			token := strings.TrimPrefix(auth, "Bearer ")
+			if subtle.ConstantTimeCompare([]byte(token), []byte(s.apiKey)) == 1 {
+				next(w, r)
+				return
+			}
+		}
+
+		// Also check query parameter
+		if r.URL.Query().Get("api_key") == s.apiKey {
+			next(w, r)
+			return
+		}
+
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+	}
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -60,12 +91,28 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(s.cfg)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// Only return safe settings, not paths
+	safe := map[string]interface{}{
+		"server": map[string]interface{}{
+			"timeout": s.cfg.Server.Timeout,
+		},
+		"security": map[string]interface{}{
+			"max_timeout":    s.cfg.Security.MaxTimeout,
+			"max_memory":     s.cfg.Security.MaxMemory,
+			"max_matrix_size": s.cfg.Security.MaxMatrixSize,
+			"max_tensor_ndim": s.cfg.Security.MaxTensorNdim,
+		},
+		"engine": map[string]interface{}{
+			"edition": s.cfg.Engine.Edition,
+		},
+		"ui": map[string]interface{}{
+			"theme":    s.cfg.UI.Theme,
+			"font_size": s.cfg.UI.FontSize,
+			"tab_size":  s.cfg.UI.TabSize,
+		},
 	}
 
+	data, _ := json.Marshal(safe)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
 }
@@ -83,38 +130,20 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var update struct {
-		Server   *config.ServerConfig   `json:"server,omitempty"`
-		Database *config.DatabaseConfig `json:"database,omitempty"`
 		Security *config.SecurityConfig `json:"security,omitempty"`
-		Engine   *config.EngineConfig   `json:"engine,omitempty"`
 		UI       *config.UIConfig       `json:"ui,omitempty"`
 	}
 
 	if err := json.Unmarshal(body, &update); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		writeJSON(w, fmt.Sprintf(`{"error":%q}`, err.Error()))
 		return
 	}
 
-	if update.Server != nil {
-		s.cfg.Server = *update.Server
-	}
-	if update.Database != nil {
-		s.cfg.Database = *update.Database
-	}
 	if update.Security != nil {
 		s.cfg.Security = *update.Security
 	}
-	if update.Engine != nil {
-		s.cfg.Engine = *update.Engine
-	}
 	if update.UI != nil {
 		s.cfg.UI = *update.UI
-	}
-
-	configPath := "config/koi.toml"
-	if err := s.cfg.Save(configPath); err != nil {
-		writeJSON(w, fmt.Sprintf(`{"error":%q}`, err.Error()))
-		return
 	}
 
 	writeJSON(w, `{"status":"ok"}`)
@@ -139,8 +168,8 @@ func (s *Server) handleLuaExecute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	L := s.vmPool.Get()
-	defer s.vmPool.Put(L)
 
+	// Capture io.print output
 	var output []string
 	ioTbl, ok := L.GetGlobal("io").(*lua.LTable)
 	if ok {
@@ -162,13 +191,18 @@ func (s *Server) handleLuaExecute(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case <-time.After(s.cfg.GetTimeout()):
+		// P0 fix: discard VM on timeout, don't return to pool
+		s.vmPool.Discard(L)
 		writeJSON(w, `{"error":"execution timeout"}`)
 		return
 	case err := <-done:
 		if err != nil {
+			s.vmPool.Discard(L)
 			writeJSON(w, fmt.Sprintf(`{"error":%q}`, err.Error()))
 			return
 		}
+		// Only return VM to pool on success
+		s.vmPool.Put(L)
 	}
 
 	result := strings.Join(output, "\n")
@@ -189,20 +223,39 @@ func (s *Server) handleFilesystem(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			writeJSON(w, fmt.Sprintf(`{"key":%q,"name":%q,"type":%q,"value":%v}`,
-				node.Key, node.Name, node.ObjType, deref(node.Value)))
+			resp := map[string]interface{}{
+				"key":  node.Key,
+				"name": node.Name,
+				"type": node.ObjType,
+			}
+			if node.Value != nil {
+				resp["value"] = *node.Value
+			}
+			data, _ := json.Marshal(resp)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(data)
 		} else {
 			children, err := s.db.ListChildren(path)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			var items []string
-			for _, c := range children {
-				items = append(items, fmt.Sprintf(`{"name":%q,"type":%q,"key":%q}`,
-					c.Name, c.ObjType, c.Key))
+			type childInfo struct {
+				Name string `json:"name"`
+				Type string `json:"type"`
+				Key  string `json:"key"`
 			}
-			writeJSON(w, fmt.Sprintf(`{"path":%q,"children":[%s]}`, path, strings.Join(items, ",")))
+			items := make([]childInfo, len(children))
+			for i, c := range children {
+				items[i] = childInfo{Name: c.Name, Type: c.ObjType, Key: c.Key}
+			}
+			resp := map[string]interface{}{
+				"path":     path,
+				"children": items,
+			}
+			data, _ := json.Marshal(resp)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(data)
 		}
 
 	default:
@@ -212,9 +265,13 @@ func (s *Server) handleFilesystem(w http.ResponseWriter, r *http.Request) {
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -234,13 +291,6 @@ func logMiddleware(next http.Handler) http.Handler {
 func writeJSON(w http.ResponseWriter, data string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(data))
-}
-
-func deref(s *string) string {
-	if s == nil {
-		return "null"
-	}
-	return `"` + *s + `"`
 }
 
 func FindWebDir() string {

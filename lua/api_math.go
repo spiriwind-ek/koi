@@ -3,22 +3,30 @@ package lua
 import (
 	"encoding/json"
 	"fmt"
-	"math"
+	"log"
 
 	lua "github.com/yuin/gopher-lua"
-	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/floats"
+	"gonum.org/v1/gonum/mat"
+	"koi/config"
 	"koi/storage"
 )
 
 // math.mat_new(path, rows, cols, data_table)
-// Creates a matrix and stores it at the given path
-func mathMatNew(db *storage.DB) lua.LGFunction {
+func mathMatNew(db *storage.DB, cfg *config.Config) lua.LGFunction {
 	return func(L *lua.LState) int {
 		path := L.CheckString(1)
 		rows := L.CheckInt(2)
 		cols := L.CheckInt(3)
 		dataTbl := L.CheckTable(4)
+
+		// Security: check matrix size limit
+		maxSize := cfg.Security.MaxMatrixSize
+		if maxSize > 0 && (rows > maxSize || cols > maxSize) {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(fmt.Sprintf("matrix size %dx%d exceeds limit %d", rows, cols, maxSize)))
+			return 2
+		}
 
 		data := make([]float64, rows*cols)
 		for i := 0; i < rows*cols; i++ {
@@ -28,9 +36,13 @@ func mathMatNew(db *storage.DB) lua.LGFunction {
 			}
 		}
 
-		// Serialize: rows, cols, data
 		shape := fmt.Sprintf("[%d,%d]", rows, cols)
-		dataJSON, _ := json.Marshal(data)
+		dataJSON, err := json.Marshal(data)
+		if err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(fmt.Sprintf("marshal data: %v", err)))
+			return 2
+		}
 		meta := fmt.Sprintf(`{"format":"dense","shape":%s}`, shape)
 
 		parent := parentPath(path)
@@ -48,9 +60,17 @@ func mathMatNew(db *storage.DB) lua.LGFunction {
 		}
 
 		if db.NodeExists(path) {
-			db.UpdateNode(n)
+			if err := db.UpdateNode(n); err != nil {
+				L.Push(lua.LNil)
+				L.Push(lua.LString(err.Error()))
+				return 2
+			}
 		} else {
-			db.CreateNode(n)
+			if err := db.CreateNode(n); err != nil {
+				L.Push(lua.LNil)
+				L.Push(lua.LString(err.Error()))
+				return 2
+			}
 		}
 
 		L.Push(lua.LTrue)
@@ -220,14 +240,22 @@ func mathMatShape(db *storage.DB) lua.LGFunction {
 }
 
 // math.tensor_new(path, shape_table, data_table)
-// Generic N-dimensional tensor stored as flat data + shape
-func mathTensorNew(db *storage.DB) lua.LGFunction {
+func mathTensorNew(db *storage.DB, cfg *config.Config) lua.LGFunction {
 	return func(L *lua.LState) int {
 		path := L.CheckString(1)
 		shapeTbl := L.CheckTable(2)
 		dataTbl := L.CheckTable(3)
 
 		shape := tableToInts(L, shapeTbl)
+
+		// Security: check tensor dimension limit
+		maxNdim := cfg.Security.MaxTensorNdim
+		if maxNdim > 0 && len(shape) > maxNdim {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(fmt.Sprintf("tensor ndim %d exceeds limit %d", len(shape), maxNdim)))
+			return 2
+		}
+
 		totalSize := 1
 		for _, s := range shape {
 			totalSize *= s
@@ -241,7 +269,12 @@ func mathTensorNew(db *storage.DB) lua.LGFunction {
 			}
 		}
 
-		dataJSON, _ := json.Marshal(data)
+		dataJSON, err := json.Marshal(data)
+		if err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(fmt.Sprintf("marshal data: %v", err)))
+			return 2
+		}
 		shapeJSON, _ := json.Marshal(shape)
 		meta := fmt.Sprintf(`{"format":"tensor","shape":%s,"ndim":%d}`, string(shapeJSON), len(shape))
 
@@ -260,9 +293,17 @@ func mathTensorNew(db *storage.DB) lua.LGFunction {
 		}
 
 		if db.NodeExists(path) {
-			db.UpdateNode(n)
+			if err := db.UpdateNode(n); err != nil {
+				L.Push(lua.LNil)
+				L.Push(lua.LString(err.Error()))
+				return 2
+			}
 		} else {
-			db.CreateNode(n)
+			if err := db.CreateNode(n); err != nil {
+				L.Push(lua.LNil)
+				L.Push(lua.LString(err.Error()))
+				return 2
+			}
 		}
 
 		L.Push(lua.LTrue)
@@ -282,13 +323,16 @@ func mathTensorPrint(db *storage.DB) lua.LGFunction {
 		}
 
 		var data []float64
-		json.Unmarshal([]byte(*n.Value), &data)
+		if err := json.Unmarshal([]byte(*n.Value), &data); err != nil {
+			log.Printf("tensor_print unmarshal error: %v", err)
+		}
 
 		var shape []int
 		if n.BlobMeta != nil {
 			var meta map[string]interface{}
-			json.Unmarshal([]byte(*n.BlobMeta), &meta)
-			if s, ok := meta["shape"].([]interface{}); ok {
+			if err := json.Unmarshal([]byte(*n.BlobMeta), &meta); err != nil {
+				log.Printf("tensor_print meta unmarshal error: %v", err)
+			} else if s, ok := meta["shape"].([]interface{}); ok {
 				for _, v := range s {
 					if f, ok := v.(float64); ok {
 						shape = append(shape, int(f))
@@ -316,8 +360,9 @@ func mathTensorShape(db *storage.DB) lua.LGFunction {
 		var shape []int
 		if n.BlobMeta != nil {
 			var meta map[string]interface{}
-			json.Unmarshal([]byte(*n.BlobMeta), &meta)
-			if s, ok := meta["shape"].([]interface{}); ok {
+			if err := json.Unmarshal([]byte(*n.BlobMeta), &meta); err != nil {
+				log.Printf("tensor_shape meta unmarshal error: %v", err)
+			} else if s, ok := meta["shape"].([]interface{}); ok {
 				for _, v := range s {
 					if f, ok := v.(float64); ok {
 						shape = append(shape, int(f))
@@ -409,7 +454,9 @@ func loadMatrix(db *storage.DB, path string) (*mat.Dense, error) {
 	var shape []int
 	if n.BlobMeta != nil {
 		var meta map[string]interface{}
-		json.Unmarshal([]byte(*n.BlobMeta), &meta)
+		if err := json.Unmarshal([]byte(*n.BlobMeta), &meta); err != nil {
+			return nil, fmt.Errorf("parse meta: %w", err)
+		}
 		if s, ok := meta["shape"].([]interface{}); ok {
 			for _, v := range s {
 				if f, ok := v.(float64); ok {
@@ -433,7 +480,11 @@ func loadMatrix(db *storage.DB, path string) (*mat.Dense, error) {
 func saveMatrix(db *storage.DB, path string, A *mat.Dense) {
 	r, c := A.Dims()
 	data := A.RawMatrix().Data
-	dataJSON, _ := json.Marshal(data)
+	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("saveMatrix marshal error: %v", err)
+		return
+	}
 	shape := fmt.Sprintf("[%d,%d]", r, c)
 	meta := fmt.Sprintf(`{"format":"dense","shape":%s}`, shape)
 
@@ -452,9 +503,13 @@ func saveMatrix(db *storage.DB, path string, A *mat.Dense) {
 	}
 
 	if db.NodeExists(path) {
-		db.UpdateNode(n)
+		if err := db.UpdateNode(n); err != nil {
+			log.Printf("saveMatrix update error: %v", err)
+		}
 	} else {
-		db.CreateNode(n)
+		if err := db.CreateNode(n); err != nil {
+			log.Printf("saveMatrix create error: %v", err)
+		}
 	}
 }
 
@@ -481,6 +536,3 @@ func tableToInts(L *lua.LState, tbl *lua.LTable) []int {
 	})
 	return result
 }
-
-// suppress unused
-var _ = math.Pi

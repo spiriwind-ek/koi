@@ -1,24 +1,27 @@
 package lua
 
 import (
-	"fmt"
 	"sync"
-	"time"
 
 	lua "github.com/yuin/gopher-lua"
+	"koi/config"
 	"koi/storage"
 )
 
 type VMPool struct {
 	db   *storage.DB
+	cfg  *config.Config
 	pool chan *lua.LState
 	mu   sync.Mutex
+	size int
 }
 
-func NewVMPool(db *storage.DB) *VMPool {
+func NewVMPool(db *storage.DB, cfg *config.Config) *VMPool {
 	return &VMPool{
 		db:   db,
+		cfg:  cfg,
 		pool: make(chan *lua.LState, 4),
+		size: 4,
 	}
 }
 
@@ -39,32 +42,14 @@ func (p *VMPool) Put(L *lua.LState) {
 	}
 }
 
-func (p *VMPool) create() *lua.LState {
-	L := lua.NewState()
-	SetupSandbox(L, p.db)
-	return L
+func (p *VMPool) Discard(L *lua.LState) {
+	L.Close()
 }
 
-func (p *VMPool) Execute(code string, timeout time.Duration) (string, error) {
-	L := p.Get()
-	defer p.Put(L)
-
-	var output string
-
-	done := make(chan error, 1)
-	go func() {
-		done <- L.DoString(code)
-	}()
-
-	select {
-	case <-time.After(timeout):
-		return "", fmt.Errorf("execution timeout (%v)", timeout)
-	case err := <-done:
-		if err != nil {
-			return "", err
-		}
-		return output, nil
-	}
+func (p *VMPool) create() *lua.LState {
+	L := lua.NewState()
+	SetupSandbox(L, p.db, p.cfg)
+	return L
 }
 
 func (p *VMPool) Close() {

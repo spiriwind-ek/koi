@@ -19,6 +19,7 @@ func main() {
 	listen := flag.String("listen", "", "override listen address")
 	dbPath := flag.String("db", "", "override database path")
 	webDir := flag.String("web", "", "web directory")
+	apiKey := flag.String("api-key", "", "API key for authentication (empty = no auth)")
 	flag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -37,6 +38,12 @@ func main() {
 		cfg.Database.Path = *dbPath
 	}
 
+	// Allow API key from environment
+	key := *apiKey
+	if key == "" {
+		key = os.Getenv("KOI_API_KEY")
+	}
+
 	db, err := storage.NewDB(cfg.Database.Path)
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
@@ -49,7 +56,7 @@ func main() {
 		dir = gateway.FindWebDir()
 	}
 
-	srv := gateway.NewServer(db, cfg, dir)
+	srv := gateway.NewServer(db, cfg, dir, key)
 
 	httpServer := &http.Server{
 		Addr:         cfg.Server.Listen,
@@ -65,6 +72,12 @@ func main() {
 		log.Println("Shutting down...")
 		httpServer.Close()
 	}()
+
+	if key != "" {
+		log.Printf("API key authentication enabled")
+	} else {
+		log.Printf("WARNING: No API key set, all endpoints are open")
+	}
 
 	fmt.Printf("Listening on %s\n", cfg.Server.Listen)
 	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
